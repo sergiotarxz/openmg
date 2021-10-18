@@ -1,8 +1,15 @@
 #include <stdio.h>
+
 #include <libsoup/soup.h>
-#include <manga.h>
 #include <libxml/HTMLparser.h>
 #include <libxml/xpath.h>
+
+#ifndef PCRE2_CODE_UNIT_WIDTH
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+#endif
+
+#include <manga.h>
 
 const char *mangafox_url =
 	"https://mangafox.fun";
@@ -15,6 +22,31 @@ xmlXPathObjectPtr
 get_nodes_xpath_expression (
 		const xmlDocPtr document,
 		char *xpath);
+struct SplittedString *
+split(char *re_str, size_t re_str_size, const char *subject,
+		size_t subject_size);
+char *
+alloc_string(size_t len);
+void
+copy_substring(const char *origin, char *dest, 
+		size_t dest_len, size_t start, size_t len);
+void
+print_classes (const char *class_attribute,
+		size_t class_attribute_size);
+int
+has_class (const char *class_attribute,
+		char *class_to_check);
+
+struct String {
+	char *content;
+	size_t size;
+};
+
+struct SplittedString {
+	struct String *substrings;
+	size_t n_strings;
+};
+
 char *
 get_request (const char *url, gsize *size_response_text);
 void
@@ -87,16 +119,111 @@ parse_main_mangafox_page (const xmlDocPtr html_document,
 	for (int i = 0; i < node_set->nodeNr; i++) {
 		xmlNodePtr node = node_set->nodeTab[i];
 		for (xmlAttr *attrs = node->properties; attrs; attrs=attrs->next) {
-			if (!xmlStrcmp(attrs->name, (const xmlChar *)"class")) {
-				if (attrs->children
-						&& attrs->children->content) {
-					printf("%s\n", (const char *)attrs->children->content);
-					break;
+			if (!xmlStrcmp(attrs->name, (const xmlChar *)"class") 
+					&& attrs->children && attrs->children->content) {
+				const char *content = (char *) attrs->children->content;
+				if (has_class (content, "manga-slide")) {
+					printf("%s\n", content);
 				}
 			}
 		}
 		
 	}
+}
+
+int
+has_class (const char *class_attribute,
+		char *class_to_check) {
+	char *re = "\\s+";
+	struct SplittedString *classes;
+	classes = split(re, strlen(re), class_attribute,
+			strlen(class_attribute));
+	for (int i = 0; i<classes->n_strings; i++) {
+		if (strcmp(classes->substrings[i].content, class_to_check) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+struct SplittedString *
+split(char *re_str, size_t re_str_size, const char *subject, size_t subject_size) {
+	pcre2_code_8 *re;
+	pcre2_match_data_8 *match_data;
+	PCRE2_SIZE *ovector;
+	int rc;
+	int start_pos = 0;
+	int offset    = 0;
+	int regex_compile_error;
+	PCRE2_SIZE error_offset;
+	struct SplittedString *splitted_string;
+
+	splitted_string = g_malloc ((sizeof (struct SplittedString)));
+
+	splitted_string->n_strings = 0;
+	splitted_string->substrings = NULL;
+	re = pcre2_compile ((PCRE2_SPTR8) re_str, 
+			re_str_size, 0, &regex_compile_error, &error_offset, NULL);
+	while (start_pos < subject_size) {
+		splitted_string->n_strings++;
+		match_data = pcre2_match_data_create_from_pattern_8 (re, NULL);
+		rc = pcre2_match_8 ( re, (PCRE2_SPTR8) subject, subject_size, start_pos, 0, match_data,
+				NULL);
+		if (splitted_string->substrings) {
+			splitted_string->substrings = g_realloc (splitted_string
+					->substrings, (sizeof (struct String)) * (offset + 1));
+		} else {
+			splitted_string->substrings = g_malloc (sizeof
+					(struct String));
+		}
+		if (rc < 0) {
+			struct String *current_substring = 
+				&splitted_string->substrings [offset];
+			current_substring->content = alloc_string (subject_size 
+					- start_pos);
+			copy_substring (subject, current_substring->content,
+					subject_size,
+					start_pos,
+					subject_size - start_pos);
+			current_substring->size = subject_size - start_pos;
+			break;
+		}
+		ovector = pcre2_get_ovector_pointer_8(match_data);
+		splitted_string->substrings[offset].content = alloc_string (
+				ovector[0] - start_pos);
+		copy_substring (subject, splitted_string->substrings[offset]
+				.content,
+				subject_size,
+				start_pos,
+				ovector[0] - start_pos - 1);
+		splitted_string->substrings[offset].size =
+			ovector[0] - start_pos - 1;
+
+		start_pos = ovector[1];
+		offset++;
+	}
+	return splitted_string;
+}
+
+char *
+alloc_string(size_t len) {
+	char * return_value;
+	return g_malloc (len + 1 * sizeof *return_value);
+}
+
+void
+copy_substring(const char *origin, char *dest, size_t dest_len, size_t start,
+		size_t len) {
+	size_t copying_offset = 0;
+	while (copying_offset < len) {
+		if (!(start+copying_offset <=dest_len)) {
+			fprintf(stderr, "Read attempt out of bounds.%ld %ld %ld\n", dest_len, start, len);
+			break;
+		}
+		dest[copying_offset] = origin[start+copying_offset];
+		copying_offset++;
+	}
+	dest[len] = '\0';
 }
 
 xmlXPathObjectPtr
