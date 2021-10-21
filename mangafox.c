@@ -13,6 +13,15 @@
 
 const char *mangafox_url =
 	"https://mangafox.fun";
+struct String {
+	char *content;
+	size_t size;
+};
+
+struct SplittedString {
+	struct String *substrings;
+	size_t n_strings;
+};
 
 struct Manga *
 parse_main_mangafox_page (
@@ -22,9 +31,6 @@ xmlXPathObjectPtr
 get_nodes_xpath_expression (
 		const xmlDocPtr document,
 		char *xpath);
-struct SplittedString *
-split(char *re_str, size_t re_str_size, const char *subject,
-		size_t subject_size);
 char *
 alloc_string(size_t len);
 void
@@ -36,27 +42,26 @@ print_classes (const char *class_attribute,
 int
 has_class (const char *class_attribute,
 		char *class_to_check);
+void
+splitted_string_free (struct SplittedString *splitted_string);
 
-struct String {
-	char *content;
-	size_t size;
-};
-
-struct SplittedString {
-	struct String *substrings;
-	size_t n_strings;
-};
-
+struct SplittedString *
+split(char *re_str, size_t re_str_size, const char *subject,
+		size_t subject_size);
+void
+iterate_string_to_split(struct SplittedString *splitted_string, pcre2_code *re, int *will_break, const char *subject,
+		size_t subject_size, size_t *start_pos, size_t *offset);
 char *
 get_request (const char *url, gsize *size_response_text);
+
 void
 retrieve_mangafox_title () {
 	xmlDocPtr html_response;
-	gsize *size_response_text = malloc (sizeof (gsize));
+	gsize size_response_text;
 	char *response_text = get_request (mangafox_url,
-			size_response_text);
+			&size_response_text);
 	html_response = htmlReadMemory (response_text,
-			*size_response_text,
+			size_response_text,
 			NULL,
 			NULL,
 			HTML_PARSE_RECOVER | HTML_PARSE_NODEFDTD 
@@ -64,6 +69,7 @@ retrieve_mangafox_title () {
 			);
 	size_t manga_size;
 	parse_main_mangafox_page (html_response, &manga_size);
+	xmlFreeDoc (html_response);
 	free (response_text);
 }
 
@@ -127,8 +133,9 @@ parse_main_mangafox_page (const xmlDocPtr html_document,
 				}
 			}
 		}
-		
 	}
+
+	xmlXPathFreeObject (xpath_result);
 }
 
 int
@@ -136,73 +143,109 @@ has_class (const char *class_attribute,
 		char *class_to_check) {
 	char *re = "\\s+";
 	struct SplittedString *classes;
+	int return_value = 0;
 	classes = split(re, strlen(re), class_attribute,
 			strlen(class_attribute));
 	for (int i = 0; i<classes->n_strings; i++) {
 		if (strcmp(classes->substrings[i].content, class_to_check) == 0) {
-			return 1;
+			return_value = 1;
+			goto cleanup_has_class;
 		}
 	}
-	return 0;
+
+cleanup_has_class:
+	splitted_string_free (classes);
+	return return_value;
+}
+
+void
+splitted_string_free (struct SplittedString *splitted_string) {
+	for (int i = 0; i<splitted_string->n_strings; i++) {
+		g_free (splitted_string->substrings[i].content);
+	}
+
+	g_free (splitted_string->substrings);
+	g_free (splitted_string);
 }
 
 struct SplittedString *
 split(char *re_str, size_t re_str_size, const char *subject, size_t subject_size) {
 	pcre2_code_8 *re;
-	pcre2_match_data_8 *match_data;
-	PCRE2_SIZE *ovector;
-	int rc;
-	int start_pos = 0;
-	int offset    = 0;
+	size_t start_pos = 0;
+	size_t offset    = 0;
 	int regex_compile_error;
 	PCRE2_SIZE error_offset;
 	struct SplittedString *splitted_string;
 
-	splitted_string = g_malloc ((sizeof (struct SplittedString)));
+	splitted_string = g_malloc (sizeof *splitted_string);
 
 	splitted_string->n_strings = 0;
 	splitted_string->substrings = NULL;
 	re = pcre2_compile ((PCRE2_SPTR8) re_str, 
 			re_str_size, 0, &regex_compile_error, &error_offset, NULL);
 	while (start_pos < subject_size) {
-		splitted_string->n_strings++;
-		match_data = pcre2_match_data_create_from_pattern_8 (re, NULL);
-		rc = pcre2_match_8 ( re, (PCRE2_SPTR8) subject, subject_size, start_pos, 0, match_data,
-				NULL);
-		if (splitted_string->substrings) {
-			splitted_string->substrings = g_realloc (splitted_string
-					->substrings, (sizeof (struct String)) * (offset + 1));
-		} else {
-			splitted_string->substrings = g_malloc (sizeof
-					(struct String));
-		}
-		if (rc < 0) {
-			struct String *current_substring = 
-				&splitted_string->substrings [offset];
-			current_substring->content = alloc_string (subject_size 
-					- start_pos);
-			copy_substring (subject, current_substring->content,
-					subject_size,
-					start_pos,
-					subject_size - start_pos);
-			current_substring->size = subject_size - start_pos;
+		int will_break = 0;
+		iterate_string_to_split(splitted_string, re, &will_break,
+				subject, subject_size, &start_pos, &offset);
+		if (will_break) {
 			break;
 		}
-		ovector = pcre2_get_ovector_pointer_8(match_data);
-		splitted_string->substrings[offset].content = alloc_string (
-				ovector[0] - start_pos);
-		copy_substring (subject, splitted_string->substrings[offset]
-				.content,
-				subject_size,
-				start_pos,
-				ovector[0] - start_pos - 1);
-		splitted_string->substrings[offset].size =
-			ovector[0] - start_pos - 1;
-
-		start_pos = ovector[1];
-		offset++;
 	}
+
+	pcre2_code_free (re);
+	re = NULL;
+
 	return splitted_string;
+}
+
+void
+iterate_string_to_split(struct SplittedString *splitted_string, pcre2_code *re, int *will_break, const char *subject,
+		size_t subject_size, size_t *start_pos, size_t *offset) {
+	pcre2_match_data_8 *match_data;
+	PCRE2_SIZE *ovector;
+	int rc;
+
+	splitted_string->n_strings++;
+	match_data = pcre2_match_data_create_from_pattern_8 (re, NULL);
+	rc = pcre2_match_8 ( re, (PCRE2_SPTR8) subject, subject_size, *start_pos, 0, match_data,
+			NULL);
+	if (splitted_string->substrings) {
+		splitted_string->substrings = g_realloc (splitted_string->substrings, 
+				(sizeof *splitted_string->substrings) * (*offset + 1));
+	} else {
+		splitted_string->substrings = g_malloc (sizeof *splitted_string->substrings);
+	}
+	if (rc < 0) {
+		struct String *current_substring = 
+			&splitted_string->substrings [*offset];
+		current_substring->content = alloc_string (subject_size 
+				- *start_pos);
+		copy_substring (subject, current_substring->content,
+				subject_size,
+				*start_pos,
+				subject_size - *start_pos);
+		current_substring->size = subject_size - *start_pos;
+
+		*will_break = 1;
+		goto cleanup_iterate_string_to_split;
+	}
+	ovector = pcre2_get_ovector_pointer_8(match_data);
+	splitted_string->substrings[*offset].content = alloc_string (
+			ovector[0] - *start_pos);
+	copy_substring (subject, splitted_string->substrings[*offset]
+			.content,
+			subject_size,
+			*start_pos,
+			ovector[0] - *start_pos - 1);
+	splitted_string->substrings[*offset].size =
+		ovector[0] - *start_pos - 1;
+
+	*start_pos = ovector[1];
+
+	*offset += 1;
+
+cleanup_iterate_string_to_split:
+	pcre2_match_data_free (match_data);
 }
 
 char *
@@ -237,6 +280,9 @@ get_nodes_xpath_expression (const xmlDocPtr document, char *xpath) {
 		return NULL;
 	}
 	result = xmlXPathEvalExpression ((const xmlChar *)xpath, context);
+
+	xmlXPathFreeContext (context);
+
 	return result;
 }
 
