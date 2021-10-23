@@ -70,6 +70,10 @@ char *
 get_manga_slide_cover(xmlNodePtr node);
 char *
 match_1 (char *re_str, char *subject);
+xmlNodePtr
+find_class(xmlNodePtr node, char *class);
+char *
+get_manga_slide_title(xmlNodePtr node);
 
 void
 retrieve_mangafox_title () {
@@ -132,14 +136,56 @@ parse_main_mangafox_page (const xmlDocPtr html_document,
     size_t nodes_len = 0;
 
     nodes = find_all_manga_slide (html_document, &nodes_len);
-    //print_debug_nodes (html_document, nodes, nodes_len);
+    print_debug_nodes (html_document, nodes, nodes_len);
     for (int i = 0; i < nodes_len; i++) {
         node = nodes[i];
         char *cover = get_manga_slide_cover(node);
         if (cover) {
-            printf("%s\n", cover);
+            printf ("%s\n", cover);
+        }
+        char *title = get_manga_slide_title (node);
+        if (title) {
+            printf ("%s\n", title);
         }
     }
+    for (int i = 0; i<nodes_len; i++) {
+        xmlNodePtr node = nodes[i];
+        xmlFreeNode (node);
+    }
+    g_free (nodes);
+}
+
+char *
+get_manga_slide_title (xmlNodePtr node) {
+    xmlNodePtr m_slide_caption = find_class (node, "m-slide-caption");
+    if (!m_slide_caption) {
+        return NULL;
+    }
+    xmlNodePtr m_slide_title = find_class (m_slide_caption, "m-slide-title");
+    if (!m_slide_title) {
+        return NULL;
+    }
+    return (char *) xmlNodeGetContent (m_slide_title);
+}
+
+xmlNodePtr
+find_class (xmlNodePtr node, char *class) {
+    for (xmlNodePtr child = node->children; child; child=child->next) {
+        char *attr = get_attr (child, "class");
+        if (attr && has_class (attr, class)) {
+                return child;
+        }
+        if (node->children) {
+            xmlNodePtr child = node->children;
+            for (;child;child=child->next) {
+                xmlNodePtr result = find_class (child, class);
+                if (result) {
+                    return result;
+                }
+            }
+        }
+    }
+    return NULL;
 }
 
 char *
