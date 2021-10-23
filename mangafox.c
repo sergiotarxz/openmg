@@ -64,6 +64,13 @@ print_debug_nodes (const xmlDocPtr html_document,
 xmlNodePtr *
 find_all_manga_slide(const xmlDocPtr html_document,
         size_t *len);
+char *
+get_attr (xmlNodePtr const node, const char *attr_name);
+char *
+get_manga_slide_cover(xmlNodePtr node);
+char *
+match_1 (char *re_str, char *subject);
+
 void
 retrieve_mangafox_title () {
     xmlDocPtr html_response;
@@ -121,10 +128,34 @@ struct Manga *
 parse_main_mangafox_page (const xmlDocPtr html_document,
         const size_t *size) {
     xmlNodePtr *nodes;
+    xmlNodePtr node;
     size_t nodes_len = 0;
 
     nodes = find_all_manga_slide (html_document, &nodes_len);
-    print_debug_nodes (html_document, nodes, nodes_len);
+    //print_debug_nodes (html_document, nodes, nodes_len);
+    for (int i = 0; i < nodes_len; i++) {
+        node = nodes[i];
+        char *cover = get_manga_slide_cover(node);
+        if (cover) {
+            printf("%s\n", cover);
+        }
+    }
+}
+
+char *
+get_manga_slide_cover(xmlNodePtr node) {
+    for (xmlNodePtr child = node->children; child; child=child->next) {
+        char *attr = get_attr (child, "class");
+        if (attr && has_class (attr, "m-slide-background")) {
+            char *style = get_attr (child, "style");
+            char *match = match_1 ("background-image:url\\((.*?)\\)", style);
+            if (match) {
+                printf("%s\n", match);
+                return match;
+            }
+        }
+    }
+    return NULL;
 }
 
 void
@@ -171,20 +202,39 @@ cleanup_find_all_manga_slide:
 
 }
 
-xmlNodePtr *
-loop_search_class(const xmlNodePtr node, xmlNodePtr *nodes,
-        const char * class, size_t *len) {
+char *
+get_attr (xmlNodePtr const node, const char *attr_name) {
+    char *return_value = NULL;
     for (xmlAttr *attr = node->properties; attr; attr=attr->next) {
-        if (!xmlStrcmp(attr->name, (const xmlChar *)"class") 
+        if (!xmlStrcmp(attr->name, (const xmlChar *) attr_name) 
                 && attr->children && attr->children->content) {
-            const char *content = (char *) attr->children->content;
-            if (has_class (content, class)) {
-                (*len)++;
-                nodes = g_realloc (nodes, (sizeof *nodes) * *len);
-                nodes[(*len)-1] = xmlCopyNode(node, XML_COPY_NODE_RECURSIVE);
-            }
+            if (!attr->children->content) continue;
+            size_t content_len = strlen((char *) 
+                    attr->children->content);
+            return_value = alloc_string(content_len);
+            copy_substring ((char *) attr->children->content, return_value,
+                    content_len,
+                    0,
+                    content_len);                    
+            break;
         }
     }
+    return return_value;
+}
+
+xmlNodePtr *
+loop_search_class (const xmlNodePtr node, xmlNodePtr *nodes,
+        const char * class, size_t *len) {
+    char *content = get_attr (node, "class");
+    if (!content) {
+        return nodes;
+    }
+    if (has_class (content, class)) {
+        (*len)++;
+        nodes = g_realloc (nodes, (sizeof *nodes) * *len);
+        nodes[(*len)-1] = xmlCopyNode(node, XML_COPY_NODE_RECURSIVE);
+    }
+    g_free (content);
     return nodes;
 }
 
@@ -248,6 +298,36 @@ split(char *re_str, size_t re_str_size, const char *subject, size_t subject_size
     return splitted_string;
 }
 
+char *
+match_1 (char *re_str, char *subject) {
+    pcre2_code *re;    
+    pcre2_match_data *match_data;
+
+    char *return_value;
+    int regex_compile_error;
+    int rc;
+    size_t len_match = 0;
+
+    return_value = NULL;
+    PCRE2_SIZE error_offset;
+
+    re = pcre2_compile ((PCRE2_SPTR8) re_str, strlen (re_str), 0,
+            &regex_compile_error, &error_offset, NULL);
+    match_data = pcre2_match_data_create_from_pattern (re, NULL);
+    rc = pcre2_match (re, (PCRE2_SPTR8) subject, strlen (subject),
+            0, 0, match_data, NULL);
+    if (rc < 0 ) {
+        goto cleanup_match;
+    }
+
+    pcre2_substring_get_bynumber (match_data, 1, (PCRE2_UCHAR8**)
+            &return_value, &len_match);
+cleanup_match:
+    pcre2_match_data_free (match_data);
+    pcre2_code_free (re);
+    return return_value;
+}
+
 void
 iterate_string_to_split(struct SplittedString *splitted_string, pcre2_code *re, int *will_break, const char *subject,
         size_t subject_size, size_t *start_pos, size_t *offset) {
@@ -257,7 +337,7 @@ iterate_string_to_split(struct SplittedString *splitted_string, pcre2_code *re, 
 
     splitted_string->n_strings++;
     match_data = pcre2_match_data_create_from_pattern_8 (re, NULL);
-    rc = pcre2_match_8 ( re, (PCRE2_SPTR8) subject, subject_size, *start_pos, 0, match_data,
+    rc = pcre2_match ( re, (PCRE2_SPTR8) subject, subject_size, *start_pos, 0, match_data,
             NULL);
     if (splitted_string->substrings) {
         splitted_string->substrings = g_realloc (splitted_string->substrings, 
@@ -300,7 +380,7 @@ cleanup_iterate_string_to_split:
 
 char *
 alloc_string(size_t len) {
-    char * return_value;
+    char * return_value = NULL;
     return g_malloc (len + 1 * sizeof *return_value);
 }
 
