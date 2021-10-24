@@ -6,4 +6,4 @@ LDFLAGS := $(shell pkg-config --libs ${LIBS})
 CC_COMMAND := ${CC} ${INCDIR} ${CFLAGS}
 all: build
 build:
-	${CC_COMMAND} mangafox.c main.c -o main ${LDFLAGS} -ggdb
+	${CC_COMMAND} readmng.c manga.c main.c -o main ${LDFLAGS} -ggdb
