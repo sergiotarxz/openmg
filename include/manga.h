@@ -1,6 +1,4 @@
-#ifndef MANGA
-#define MANGA
-
+#pragma once
 #include <libsoup/soup.h>
 #include <libxml/HTMLparser.h>
 #include <libxml/xpath.h>
@@ -59,4 +57,3 @@ loop_search_class (const xmlNodePtr node, xmlNodePtr *nodes,
         const char * class, size_t *len);
 char *
 copy_binary_data (const char *input, size_t size);
-#endif
