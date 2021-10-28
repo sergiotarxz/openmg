@@ -44,7 +44,11 @@ activate (AdwApplication *app,
         NULL);
     GtkWidget *list_view = gtk_list_view_new (GTK_SELECTION_MODEL (selection),
             factory);
-    gtk_box_append (box, list_view);
+    GtkWidget *scroll = gtk_scrolled_window_new ();
+    gtk_widget_set_valign (scroll, GTK_ALIGN_FILL);
+    gtk_widget_set_vexpand (scroll, 1);
+    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll), list_view);
+    gtk_box_append (box, scroll);
 
     gtk_widget_show (window);
 }
