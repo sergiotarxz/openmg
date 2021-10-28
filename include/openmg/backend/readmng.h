@@ -2,6 +2,8 @@
 
 #include <glib-object.h>
 
+#include <gio/gio.h>
+
 #include <openmg/manga.h>
 
 G_BEGIN_DECLS;
@@ -24,7 +26,7 @@ mg_backend_readmng_get_property (GObject *object, guint property_id,
 MgBackendReadmng *
 mg_backend_readmng_new (void);
 
-MgManga **
-mg_backend_readmng_get_featured_manga (MgBackendReadmng *self, size_t *len);
+GListStore *
+mg_backend_readmng_get_featured_manga (MgBackendReadmng *self);
 
 G_END_DECLS

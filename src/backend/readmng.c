@@ -15,7 +15,7 @@ struct _MgBackendReadmng {
     char *base_url;
     size_t main_page_html_len;
     char *main_page_html;
-    MgManga *(*get_featured_manga) ();
+    GListStore *(*get_featured_manga) ();
 };
 
 G_DEFINE_TYPE (MgBackendReadmng, mg_backend_readmng, G_TYPE_OBJECT)
@@ -43,17 +43,17 @@ static xmlNodePtr
 mg_backend_readmng_retrieve_img_from_thumbnail (MgBackendReadmng *self, xmlNodePtr thumbnail);
 static xmlNodePtr
 mg_backend_readmng_retrieve_ul_slides(MgBackendReadmng *self, xmlNodePtr slides) ;
-static MgManga **
+static void
 mg_backend_readmng_extract_manga_info_from_current_li (MgBackendReadmng *self, 
-        MgManga **mangas, xmlNodePtr current_li, size_t *len);
+        GListStore *mangas, xmlNodePtr current_li);
 static xmlNodePtr *
 mg_backend_readmng_retrieve_li_slides (MgBackendReadmng *self, const xmlNodePtr slides, size_t *li_len);
 static xmlNodePtr
 mg_backend_readmng_retrieve_slides (MgBackendReadmng *self, const xmlDocPtr html_document);
 static const char *
 mg_backend_readmng_get_main_page (MgBackendReadmng *self, size_t *len);
-static MgManga **
-mg_backend_readmng_parse_main_page (MgBackendReadmng *self, size_t *len, const xmlDocPtr html_document);
+static GListStore *
+mg_backend_readmng_parse_main_page (MgBackendReadmng *self, const xmlDocPtr html_document);
 static xmlDocPtr
 mg_backend_readmng_fetch_xml_main_page (MgBackendReadmng *self);
 
@@ -107,12 +107,12 @@ mg_backend_readmng_get_property (GObject *object,
     }
 }
 
-MgManga **
-mg_backend_readmng_get_featured_manga (MgBackendReadmng *self, size_t *len) {
-    MgManga **mangas;
+GListStore *
+mg_backend_readmng_get_featured_manga (MgBackendReadmng *self) {
+    GListStore *mangas;
     xmlDocPtr html_document;
     html_document = mg_backend_readmng_fetch_xml_main_page (self);
-    mangas = mg_backend_readmng_parse_main_page (self, len, html_document);
+    mangas = mg_backend_readmng_parse_main_page (self, html_document);
     return mangas;
 
 }
@@ -141,20 +141,20 @@ mg_backend_readmng_get_main_page (MgBackendReadmng *self, size_t *len) {
     return self->main_page_html;
 }
 
-static MgManga **
-mg_backend_readmng_parse_main_page (MgBackendReadmng *self, size_t *len, const xmlDocPtr html_document) {
-    MgManga **mangas = NULL;
+static GListStore *
+mg_backend_readmng_parse_main_page (MgBackendReadmng *self, const xmlDocPtr html_document) {
+    GListStore *mangas = g_list_store_new(MG_TYPE_MANGA);
     xmlNodePtr *li;
 
-    *len = 0;
     xmlNodePtr slides = mg_backend_readmng_retrieve_slides (self, html_document);
 
     size_t li_len = 0;
     li = mg_backend_readmng_retrieve_li_slides (self, slides, &li_len);
     for (int i = 0; i<li_len; i++) {
         xmlNodePtr current_li = li[i];
-        mangas = mg_backend_readmng_extract_manga_info_from_current_li (self, mangas, current_li,
-                len);
+        mg_backend_readmng_extract_manga_info_from_current_li (self, 
+                mangas, current_li);
+                
     }
     return mangas;
 }
@@ -226,20 +226,18 @@ mg_backend_readmng_retrieve_title_from_li (MgBackendReadmng *self, xmlNodePtr li
     return NULL;
 }
 
-static MgManga **
+static void
 mg_backend_readmng_extract_manga_info_from_current_li (MgBackendReadmng *self, 
-    MgManga **mangas, xmlNodePtr current_li, size_t *len) {
+    GListStore *mangas, xmlNodePtr current_li) {
 
     xmlNodePtr thumbnail = mg_backend_readmng_retrieve_thumbnail_from_li (self, current_li);
     xmlNodePtr title = mg_backend_readmng_retrieve_title_from_li (self, current_li);
     xmlNodePtr img;
 
     if (thumbnail && title && (img = mg_backend_readmng_retrieve_img_from_thumbnail (self, thumbnail))) {
-        (*len)++;
-        mangas = g_realloc(mangas, sizeof *mangas * *len);
-        mangas[*len-1] = mg_manga_new (get_attr (img, "src"), (char *)xmlNodeGetContent (title));
+        g_list_store_append (mangas, mg_manga_new (get_attr (img, "src"), 
+                (char *)xmlNodeGetContent (title)));
     }
-    return mangas;
 }
 
 static xmlNodePtr

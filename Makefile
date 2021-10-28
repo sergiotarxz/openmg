@@ -1,5 +1,5 @@
 CC := gcc
-LIBS := libadwaita-1 gtk4 libsoup-2.4 libxml-2.0 libpcre2-8
+LIBS := libadwaita-1 gtk4 libsoup-2.4 libxml-2.0 libpcre2-8 gio-2.0
 INCDIR := -I ./include
 CFLAGS := $(shell pkg-config --cflags ${LIBS}) -Wall
 LDFLAGS := $(shell pkg-config --libs ${LIBS}) 
