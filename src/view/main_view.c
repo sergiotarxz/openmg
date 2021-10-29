@@ -71,10 +71,6 @@ create_headerbar (GtkBox *box) {
     gtk_box_append (box, header);
     GtkWidget *previous = gtk_button_new_from_icon_name ("go-previous-symbolic");
 
-    GValue margin_left = G_VALUE_INIT;
-    g_value_init (&margin_left, G_TYPE_INT);
-    g_value_set_int(&margin_left, 10);
-    g_object_set_property (G_OBJECT (previous), "margin-start", &margin_left);
     adw_header_bar_pack_start (ADW_HEADER_BAR (header), previous);
  
 
