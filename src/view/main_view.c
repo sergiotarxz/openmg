@@ -26,6 +26,7 @@ activate (AdwApplication *app,
     MgBackendReadmng *readmng = mg_backend_readmng_new ();
     GtkListView *list_view;
     GtkWidget *scroll;
+    AdwViewStack *views_stack = ADW_VIEW_STACK (adw_view_stack_new ());
 
     create_headerbar (box);
 
@@ -36,7 +37,22 @@ activate (AdwApplication *app,
     gtk_widget_set_valign (scroll, GTK_ALIGN_FILL);
     gtk_widget_set_vexpand (scroll, 1);
     gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll), GTK_WIDGET (list_view));
-    gtk_box_append (box, scroll);
+    
+    adw_view_stack_add_named (views_stack, scroll, "manga-list");
+    adw_view_stack_set_visible_child_name (views_stack, "manga-list");
+    AdwViewStackPage *page = adw_view_stack_get_page (views_stack, scroll);
+    adw_view_stack_page_set_title (page, "Manga List");
+    GtkWidget *application_controls = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0 );
+    GtkWidget *previous = gtk_button_new_from_icon_name ("go-previous");
+
+    GValue margin_left = G_VALUE_INIT;
+    g_value_init (&margin_left, G_TYPE_INT);
+    g_value_set_int(&margin_left, 10);
+    g_object_set_property (G_OBJECT (previous), "margin-start", &margin_left);
+    gtk_box_append (GTK_BOX (application_controls), previous);
+
+    gtk_box_append (box, application_controls);
+    gtk_box_append (box, GTK_WIDGET (views_stack));
 
     gtk_widget_show (window);
 }
