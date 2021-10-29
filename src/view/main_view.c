@@ -43,7 +43,7 @@ activate (AdwApplication *app,
     AdwViewStackPage *page = adw_view_stack_get_page (views_stack, scroll);
     adw_view_stack_page_set_title (page, "Manga List");
     GtkWidget *application_controls = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0 );
-    GtkWidget *previous = gtk_button_new_from_icon_name ("go-previous");
+    GtkWidget *previous = gtk_button_new_from_icon_name ("go-previous-symbolic");
 
     GValue margin_left = G_VALUE_INIT;
     g_value_init (&margin_left, G_TYPE_INT);
