@@ -1,6 +1,8 @@
 #include <libxml/HTMLparser.h>
 
 #include <openmg/backend/readmng.h>
+#include <openmg/util/soup.h>
+#include <openmg/util/xml.h>
 #include <openmg/manga.h>
 
 #include <manga.h>
@@ -15,6 +17,7 @@ struct _MgBackendReadmng {
     char *base_url;
     size_t main_page_html_len;
     char *main_page_html;
+    MgUtilXML *xml_utils;
     GListStore *(*get_featured_manga) ();
 };
 
@@ -67,6 +70,7 @@ mg_backend_readmng_init (MgBackendReadmng *self) {
     if (!self->base_url) {
         self->base_url = "https://www.readmng.com/";
     }
+    self->xml_utils = mg_util_xml_new ();
 }
 
 char *
@@ -137,8 +141,9 @@ mg_backend_readmng_fetch_xml_main_page (MgBackendReadmng *self) {
 static const char *
 mg_backend_readmng_get_main_page (MgBackendReadmng *self, size_t *len) {
     if (!self->main_page_html) {
-        self->main_page_html = get_request (self->base_url,
-                &self->main_page_html_len);
+        MgUtilSoup *util_soup = mg_util_soup_new ();
+        self->main_page_html = mg_util_soup_get_request (util_soup,
+                self->base_url, &self->main_page_html_len);
     }
     if (len) {
         *len = self->main_page_html_len;
@@ -155,7 +160,6 @@ mg_backend_readmng_parse_main_page (MgBackendReadmng *self, const xmlDocPtr html
 
     size_t li_len = 0;
     li = mg_backend_readmng_retrieve_li_slides (self, slides, &li_len);
-    print_debug_nodes (html_document, li, li_len);
     for (int i = 0; i<li_len; i++) {
         xmlNodePtr current_li = li[i];
         mg_backend_readmng_extract_manga_info_from_current_li (self, 
@@ -191,8 +195,9 @@ static xmlNodePtr
 mg_backend_readmng_retrieve_slides (MgBackendReadmng *self, const xmlDocPtr html_document) {
     xmlNodePtr *nodes = NULL;
     xmlXPathObjectPtr xpath_result = NULL;
-    xpath_result = get_nodes_xpath_expression (html_document,
-            "//div[@class]");
+    MgUtilXML *xml_utils = self->xml_utils;
+    xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
+            html_document, "//div[@class]");
     xmlNodePtr slides = NULL;
     xmlNodeSetPtr node_set = NULL;
     size_t matching_classes_len = 0;
@@ -204,7 +209,8 @@ mg_backend_readmng_retrieve_slides (MgBackendReadmng *self, const xmlDocPtr html
     }
     for (int i = 0; i < node_set->nodeNr; i++) {
         xmlNodePtr node = node_set->nodeTab[i];
-        nodes = loop_search_class (node, nodes, "slides", &matching_classes_len);
+        nodes = mg_util_xml_loop_search_class (xml_utils, node, nodes,
+                "slides", &matching_classes_len);
     }
     if (nodes) {
         slides = nodes[0];
@@ -218,7 +224,8 @@ mg_backend_readmng_retrieve_slides (MgBackendReadmng *self, const xmlDocPtr html
 static xmlNodePtr
 mg_backend_readmng_retrieve_thumbnail_from_li (MgBackendReadmng *self, xmlNodePtr current_li) {
     size_t thumbnail_len = 0;
-    xmlNodePtr *thumbnail = find_class (current_li, "thumbnail",
+    MgUtilXML *xml_utils = self->xml_utils;
+    xmlNodePtr *thumbnail = mg_util_xml_find_class (xml_utils, current_li, "thumbnail",
             &thumbnail_len, NULL, 1);
     if (thumbnail_len) return thumbnail[0];
     return NULL;
@@ -227,7 +234,8 @@ mg_backend_readmng_retrieve_thumbnail_from_li (MgBackendReadmng *self, xmlNodePt
 static xmlNodePtr
 mg_backend_readmng_retrieve_title_from_li (MgBackendReadmng *self, xmlNodePtr li) {
     size_t title_len = 0;
-    xmlNodePtr *title = find_class (li, "title", &title_len, NULL, 1);
+    MgUtilXML *xml_utils = self->xml_utils;
+    xmlNodePtr *title = mg_util_xml_find_class (xml_utils, li, "title", &title_len, NULL, 1);
     if (title_len) return title[0];
     return NULL;
 }
@@ -246,7 +254,8 @@ mg_backend_readmng_find_a_link_chapter (MgBackendReadmng *self,
 static char *
 mg_backend_get_id_manga_link (MgBackendReadmng *self, xmlNodePtr a) {
     char *re_str = "readmng\\.com/([^/]+)";
-    return match_1 (re_str, get_attr (a, "href"));
+    MgUtilXML *xml_utils = self->xml_utils;
+    return match_1 (re_str, mg_util_xml_get_attr (xml_utils, a, "href"));
 }
 
 static void
@@ -257,13 +266,15 @@ mg_backend_readmng_extract_manga_info_from_current_li (MgBackendReadmng *self,
     xmlNodePtr title = mg_backend_readmng_retrieve_title_from_li (self, current_li);
     xmlNodePtr a = mg_backend_readmng_find_a_link_chapter (self, current_li);
     xmlNodePtr img;
+    MgUtilXML *xml_utils = self->xml_utils;
     char *id_manga = NULL;
 
 
     if (thumbnail && title && (img = mg_backend_readmng_retrieve_img_from_thumbnail (self, thumbnail))
             && a && (id_manga = mg_backend_get_id_manga_link (self, a))) {
         g_list_store_append (mangas,
-                mg_manga_new (get_attr (img, "src"), (char *)xmlNodeGetContent (title), id_manga));
+                mg_manga_new (mg_util_xml_get_attr (xml_utils, img, "src"),
+                    (char *)xmlNodeGetContent (title), id_manga));
     }
 }
 

@@ -3,15 +3,9 @@
 
 G_BEGIN_DECLS;
 
-/*
- * Type declaration
- */
 #define MG_TYPE_MANGA mg_manga_get_type()
 G_DECLARE_FINAL_TYPE (MgManga, mg_manga, MG, MANGA, GObject)
 
-/*
- * Method definitions.
- */
 char *mg_manga_get_image_url(MgManga *mg_manga);
 char *mg_manga_get_title(MgManga *mg_manga);
 char *mg_manga_get_id(MgManga *mg_manga);

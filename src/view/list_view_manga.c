@@ -1,6 +1,8 @@
 #include <gtk/gtk.h>
 
 #include <openmg/manga.h>
+#include <openmg/util/soup.h>
+
 #include <openmg/view/list_view_manga.h>
 
 #include <manga.h>
@@ -28,7 +30,9 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
     size_t size_downloaded_image = 0;
     char *downloaded_image;
 
-    downloaded_image = get_request (mg_manga_get_image_url(manga), &size_downloaded_image);
+    MgUtilSoup *util_soup = mg_util_soup_new ();
+    downloaded_image = mg_util_soup_get_request (util_soup, mg_manga_get_image_url(manga),
+            &size_downloaded_image);
     tmp_image = g_file_new_tmp ("mangareadertmpfileXXXXXX",
             &iostream,
              &error

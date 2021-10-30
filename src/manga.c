@@ -143,7 +143,7 @@ mg_manga_get_property (GObject *object,
 MgManga *
 mg_manga_new (const char *const image_url, const char *const title, const char *id) {
     MgManga *self = NULL;
-    self = (MG_MANGA) (g_object_new (MG_TYPE_MANGA, NULL));
+    self = MG_MANGA ((g_object_new (MG_TYPE_MANGA, NULL)));
     self->image_url = alloc_string (strlen (image_url));
     self->title = alloc_string (strlen (title));
     self->id = alloc_string (strlen (id));
