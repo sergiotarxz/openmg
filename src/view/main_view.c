@@ -26,7 +26,7 @@ activate (AdwApplication *app,
     MgBackendReadmng *readmng = mg_backend_readmng_new ();
     GtkListView *list_view;
     GtkWidget *scroll;
-    AdwViewStack *views_stack = ADW_VIEW_STACK (adw_view_stack_new ());
+    AdwLeaflet *views_leaflet = ADW_LEAFLET (adw_leaflet_new ());
 
     create_headerbar (box);
 
@@ -38,12 +38,11 @@ activate (AdwApplication *app,
     gtk_widget_set_vexpand (scroll, 1);
     gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll), GTK_WIDGET (list_view));
     
-    adw_view_stack_add_named (views_stack, scroll, "manga-list");
-    adw_view_stack_set_visible_child_name (views_stack, "manga-list");
-    AdwViewStackPage *page = adw_view_stack_get_page (views_stack, scroll);
-    adw_view_stack_page_set_title (page, "Manga List");
+    adw_leaflet_append (views_leaflet, scroll);
+    adw_leaflet_set_can_unfold (views_leaflet, false);
+//    adw_leaflet_set_visible_child (views_leaflet, scroll);
 
-    gtk_box_append (box, GTK_WIDGET (views_stack));
+    gtk_box_append (box, GTK_WIDGET (views_leaflet));
 
     gtk_widget_show (window);
 }

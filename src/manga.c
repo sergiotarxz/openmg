@@ -7,6 +7,7 @@ struct _MgManga {
     GObject parent_instance;
     char *image_url;
     char *title;
+    char *id;
 };
 
 G_DEFINE_TYPE (MgManga, mg_manga, G_TYPE_OBJECT)
@@ -14,6 +15,7 @@ G_DEFINE_TYPE (MgManga, mg_manga, G_TYPE_OBJECT)
 typedef enum {
     MG_MANGA_IMAGE_URL = 1,
     MG_MANGA_TITLE,
+    MG_MANGA_ID,
     MG_MANGA_N_PROPERTIES
 } MgMangaProperties;
 
@@ -46,6 +48,11 @@ mg_manga_class_init (MgMangaClass *class) {
             "Title of the manga.",
             NULL,
             G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE);
+    manga_properties[MG_MANGA_ID] = g_param_spec_string ("id",
+            "Id",
+            "Id of the manga",
+            NULL,
+            G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE);
 
     g_object_class_install_properties (object_class,
             MG_MANGA_N_PROPERTIES,
@@ -57,7 +64,17 @@ mg_manga_init (MgManga *self) {
 }
 
 char *
-mg_manga_get_image_url(MgManga *self) {
+mg_manga_get_id (MgManga *self) {
+   GValue value = G_VALUE_INIT;
+    g_value_init (&value, G_TYPE_STRING);
+    g_object_get_property (G_OBJECT (self),
+            "id",
+            &value);
+    return g_value_dup_string (&value);
+}
+
+char *
+mg_manga_get_image_url (MgManga *self) {
     GValue value = G_VALUE_INIT;
     g_value_init (&value, G_TYPE_STRING);
     g_object_get_property (G_OBJECT (self),
@@ -67,7 +84,7 @@ mg_manga_get_image_url(MgManga *self) {
 }
 
 char *
-mg_manga_get_title(MgManga *self) {
+mg_manga_get_title (MgManga *self) {
     GValue value = G_VALUE_INIT;
     g_value_init (&value, G_TYPE_STRING);
     g_object_get_property (G_OBJECT (self),
@@ -91,6 +108,10 @@ mg_manga_set_property (GObject *object,
             g_free (self->title);
             self->title = g_value_dup_string (value);
             break;
+        case MG_MANGA_ID:
+            g_free (self->id);
+            self->id = g_value_dup_string (value);
+            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
             break;
@@ -110,6 +131,9 @@ mg_manga_get_property (GObject *object,
         case MG_MANGA_TITLE:
             g_value_set_string (value, self->title);
             break;
+        case MG_MANGA_ID:
+            g_value_set_string (value, self->id);
+            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
             break;
@@ -117,12 +141,14 @@ mg_manga_get_property (GObject *object,
 }
 
 MgManga *
-mg_manga_new (const char *const image_url, const char *const title) {
+mg_manga_new (const char *const image_url, const char *const title, const char *id) {
     MgManga *self = NULL;
     self = (MG_MANGA) (g_object_new (MG_TYPE_MANGA, NULL));
     self->image_url = alloc_string (strlen (image_url));
     self->title = alloc_string (strlen (title));
+    self->id = alloc_string (strlen (id));
     copy_substring (image_url, self->image_url, strlen(image_url) + 1, 0, strlen (image_url));
     copy_substring (title, self->title, strlen(title) + 1, 0, strlen (title));
+    copy_substring (id, self->id, strlen(id) + 1, 0, strlen (id));
     return self;
 }

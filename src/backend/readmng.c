@@ -69,9 +69,14 @@ mg_backend_readmng_init (MgBackendReadmng *self) {
     }
 }
 
-const char *
+char *
 mg_backend_readmng_get_base_url (MgBackendReadmng *self) {
-    return self->base_url;
+    GValue value = G_VALUE_INIT;
+    g_value_init (&value, G_TYPE_STRING);
+    g_object_get_property (G_OBJECT (self),
+            "base_url",
+            &value);
+    return g_value_dup_string (&value);
 }
 
 void
@@ -150,6 +155,7 @@ mg_backend_readmng_parse_main_page (MgBackendReadmng *self, const xmlDocPtr html
 
     size_t li_len = 0;
     li = mg_backend_readmng_retrieve_li_slides (self, slides, &li_len);
+    print_debug_nodes (html_document, li, li_len);
     for (int i = 0; i<li_len; i++) {
         xmlNodePtr current_li = li[i];
         mg_backend_readmng_extract_manga_info_from_current_li (self, 
@@ -226,17 +232,38 @@ mg_backend_readmng_retrieve_title_from_li (MgBackendReadmng *self, xmlNodePtr li
     return NULL;
 }
 
+static xmlNodePtr
+mg_backend_readmng_find_a_link_chapter (MgBackendReadmng *self,
+        xmlNodePtr current_li) {
+    for (xmlNodePtr child = current_li->children; child; child = child->next) {
+        if (!strcmp((char *)child->name, "a")) {
+            return child;
+        }
+    }
+    return NULL;
+}
+
+static char *
+mg_backend_get_id_manga_link (MgBackendReadmng *self, xmlNodePtr a) {
+    char *re_str = "readmng\\.com/([^/]+)";
+    return match_1 (re_str, get_attr (a, "href"));
+}
+
 static void
 mg_backend_readmng_extract_manga_info_from_current_li (MgBackendReadmng *self, 
-    GListStore *mangas, xmlNodePtr current_li) {
+        GListStore *mangas, xmlNodePtr current_li) {
 
     xmlNodePtr thumbnail = mg_backend_readmng_retrieve_thumbnail_from_li (self, current_li);
     xmlNodePtr title = mg_backend_readmng_retrieve_title_from_li (self, current_li);
+    xmlNodePtr a = mg_backend_readmng_find_a_link_chapter (self, current_li);
     xmlNodePtr img;
+    char *id_manga = NULL;
 
-    if (thumbnail && title && (img = mg_backend_readmng_retrieve_img_from_thumbnail (self, thumbnail))) {
-        g_list_store_append (mangas, mg_manga_new (get_attr (img, "src"), 
-                (char *)xmlNodeGetContent (title)));
+
+    if (thumbnail && title && (img = mg_backend_readmng_retrieve_img_from_thumbnail (self, thumbnail))
+            && a && (id_manga = mg_backend_get_id_manga_link (self, a))) {
+        g_list_store_append (mangas,
+                mg_manga_new (get_attr (img, "src"), (char *)xmlNodeGetContent (title), id_manga));
     }
 }
 

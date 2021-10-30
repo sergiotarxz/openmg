@@ -57,3 +57,5 @@ loop_search_class (const xmlNodePtr node, xmlNodePtr *nodes,
         const char * class, size_t *len);
 char *
 copy_binary_data (const char *input, size_t size);
+char *
+match_1 (char *re_str, char *subject);

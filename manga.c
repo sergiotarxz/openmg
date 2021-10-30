@@ -94,6 +94,9 @@ print_debug_nodes (const xmlDocPtr html_document,
 char *
 get_attr (xmlNodePtr const node, const char *attr_name) {
     char *return_value = NULL;
+    if (!node) {
+        return NULL;
+    }
     for (xmlAttr *attr = node->properties; attr; attr=attr->next) {
         if (!xmlStrcmp(attr->name, (const xmlChar *) attr_name) 
                 && attr->children && attr->children->content) {
@@ -269,4 +272,35 @@ loop_search_class (const xmlNodePtr node, xmlNodePtr *nodes,
     }
     g_free (content);
     return nodes;
+}
+
+char *
+match_1 (char *re_str, char *subject) {
+    pcre2_code *re;    
+    pcre2_match_data *match_data;
+
+    char *return_value;
+    int regex_compile_error;
+    int rc;
+    size_t len_match = 0;
+
+    return_value = NULL;
+    PCRE2_SIZE error_offset;
+    re = pcre2_compile ((PCRE2_SPTR8) re_str, strlen (re_str), 0,
+            &regex_compile_error, &error_offset, NULL);
+    match_data = pcre2_match_data_create_from_pattern (re, NULL);
+    if (!subject) {
+        goto cleanup_match;
+    }
+    rc = pcre2_match (re, (PCRE2_SPTR8) subject, strlen (subject),
+            0, 0, match_data, NULL);
+    if (rc < 0 ) {
+        goto cleanup_match;
+    }
+    pcre2_substring_get_bynumber (match_data, 1, (PCRE2_UCHAR8**)
+            &return_value, &len_match);
+cleanup_match:
+    pcre2_match_data_free (match_data);
+    pcre2_code_free (re);
+    return return_value;
 }
