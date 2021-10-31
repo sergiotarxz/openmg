@@ -24,6 +24,7 @@ activate (AdwApplication *app,
     GtkListView *list_view;
     GtkWidget *scroll;
     AdwLeaflet *views_leaflet = ADW_LEAFLET (adw_leaflet_new ());
+    adw_leaflet_set_can_swipe_back (views_leaflet, 1);
 
     create_headerbar (box);
 

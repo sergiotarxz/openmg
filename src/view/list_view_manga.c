@@ -26,7 +26,6 @@ manga_selected (GtkListView *list_view,
     MangaPressedValues *manga_pressed_values = (MangaPressedValues *) user_data;
     AdwLeaflet *views_leaflet = manga_pressed_values->views_leaflet;
     GtkBox *box = GTK_BOX (gtk_box_new (GTK_ORIENTATION_VERTICAL, 0));
-    printf ("hello world\n");
     adw_leaflet_append (views_leaflet, GTK_WIDGET (box));
     adw_leaflet_navigate (views_leaflet, ADW_NAVIGATION_DIRECTION_FORWARD);
 }
