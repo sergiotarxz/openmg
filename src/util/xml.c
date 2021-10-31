@@ -3,6 +3,7 @@
 #include <libxml/HTMLparser.h>
 #include <libxml/xpath.h>
 
+#include <openmg/util/string.h>
 #include <openmg/util/xml.h>
 
 struct _MgUtilXML {
@@ -56,6 +57,7 @@ mg_util_xml_find_class (MgUtilXML *self, xmlNodePtr node, char *class,
 char *
 mg_util_xml_get_attr (MgUtilXML *self, xmlNodePtr const node, const char *attr_name) {
     char *return_value = NULL;
+    MgUtilString *string_util = mg_util_string_new ();
     if (!node) {
         return NULL;
     }
@@ -65,11 +67,9 @@ mg_util_xml_get_attr (MgUtilXML *self, xmlNodePtr const node, const char *attr_n
             if (!attr->children->content) continue;
             size_t content_len = strlen((char *) 
                     attr->children->content);
-            return_value = alloc_string(content_len);
-            copy_substring ((char *) attr->children->content, return_value,
-                    content_len,
-                    0,
-                    content_len);                    
+            return_value = mg_util_string_alloc_string (string_util, content_len);
+            mg_util_string_copy_substring (string_util, (char *) attr->children->content,
+                return_value, content_len, 0, content_len);                    
             break;
         }
     }
