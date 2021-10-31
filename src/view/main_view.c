@@ -28,7 +28,7 @@ activate (AdwApplication *app,
     create_headerbar (box);
 
     mangas = mg_backend_readmng_get_featured_manga (readmng);
-    list_view = create_list_view_mangas (mangas);
+    list_view = create_list_view_mangas (mangas, views_leaflet);
     scroll = gtk_scrolled_window_new ();
 
     gtk_widget_set_valign (scroll, GTK_ALIGN_FILL);
@@ -37,7 +37,6 @@ activate (AdwApplication *app,
     
     adw_leaflet_append (views_leaflet, scroll);
     adw_leaflet_set_can_unfold (views_leaflet, false);
-//    adw_leaflet_set_visible_child (views_leaflet, scroll);
 
     gtk_box_append (box, GTK_WIDGET (views_leaflet));
 

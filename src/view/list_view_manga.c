@@ -1,4 +1,6 @@
 #include <gtk/gtk.h>
+#include <gdk/gdk.h>
+#include <adwaita.h>
 
 #include <openmg/manga.h>
 #include <openmg/util/soup.h>
@@ -12,12 +14,30 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
         GtkListItem *list_item,
         gpointer user_data);
 
+typedef struct {
+    GListStore *mangas;
+    AdwLeaflet *views_leaflet;
+} MangaPressedValues;
+
+static void
+manga_selected (GtkListView *list_view, 
+        guint position,
+        gpointer user_data) {
+    MangaPressedValues *manga_pressed_values = (MangaPressedValues *) user_data;
+    AdwLeaflet *views_leaflet = manga_pressed_values->views_leaflet;
+    GtkBox *box = GTK_BOX (gtk_box_new (GTK_ORIENTATION_VERTICAL, 0));
+    printf ("hello world\n");
+    adw_leaflet_append (views_leaflet, GTK_WIDGET (box));
+    adw_leaflet_navigate (views_leaflet, ADW_NAVIGATION_DIRECTION_FORWARD);
+}
+
 static void
 setup_list_view_mangas (GtkSignalListItemFactory *factory,
         GtkListItem *list_item,
         gpointer user_data) {
     MgManga *manga = gtk_list_item_get_item (list_item);
     GtkBox *box = GTK_BOX (gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0));
+
     GtkWidget *label = gtk_label_new (mg_manga_get_title (manga));
     GtkWidget *picture;
 
@@ -33,15 +53,15 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
             &size_downloaded_image);
     tmp_image = g_file_new_tmp ("mangareadertmpfileXXXXXX",
             &iostream,
-             &error
-    );
+            &error
+            );
     if (error) {
         fprintf (stderr, "Unable to read file: %s\n", error->message);
         return;
     }
     error = NULL;
     g_output_stream_write (g_io_stream_get_output_stream (G_IO_STREAM (iostream)),
-    downloaded_image, size_downloaded_image, NULL, &error);
+            downloaded_image, size_downloaded_image, NULL, &error);
     if (error) {
         fprintf (stderr, "Unable to write file: %s\n", error->message);
         return;
@@ -54,14 +74,26 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
 }
 
 GtkListView *
-create_list_view_mangas (GListStore *mangas) {
+create_list_view_mangas (GListStore *mangas, AdwLeaflet *views_leaflet) {
     GtkSingleSelection *selection = gtk_single_selection_new (G_LIST_MODEL (mangas));
     GtkListItemFactory *factory = gtk_signal_list_item_factory_new ();
+    MangaPressedValues *manga_pressed_values = NULL;
+    GtkListView *list_view_manga = NULL;
+
+    manga_pressed_values = g_malloc (sizeof *manga_pressed_values);
+    manga_pressed_values->mangas = mangas;
+    manga_pressed_values->views_leaflet = views_leaflet;
+
     g_signal_connect (G_OBJECT (factory), "bind",
-        G_CALLBACK (setup_list_view_mangas),
-        NULL);
-    return GTK_LIST_VIEW (gtk_list_view_new (GTK_SELECTION_MODEL (selection),
-            factory));
+            G_CALLBACK (setup_list_view_mangas),
+            views_leaflet);
+
+    list_view_manga = GTK_LIST_VIEW (gtk_list_view_new (GTK_SELECTION_MODEL (selection),
+                factory));
+
+    g_signal_connect (G_OBJECT (list_view_manga), "activate",
+            G_CALLBACK (manga_selected), manga_pressed_values);
+    return list_view_manga;
 }
 
 static void
