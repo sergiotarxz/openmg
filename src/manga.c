@@ -1,7 +1,9 @@
 #include <glib-object.h>
 
-#include <manga.h>
+#include <openmg/util/string.h>
 #include <openmg/manga.h>
+
+#include <manga.h>
 
 struct _MgManga {
     GObject parent_instance;
@@ -143,12 +145,20 @@ mg_manga_get_property (GObject *object,
 MgManga *
 mg_manga_new (const char *const image_url, const char *const title, const char *id) {
     MgManga *self = NULL;
+    MgUtilString *string_util = mg_util_string_new ();
     self = MG_MANGA ((g_object_new (MG_TYPE_MANGA, NULL)));
-    self->image_url = alloc_string (strlen (image_url));
-    self->title = alloc_string (strlen (title));
-    self->id = alloc_string (strlen (id));
-    copy_substring (image_url, self->image_url, strlen(image_url) + 1, 0, strlen (image_url));
-    copy_substring (title, self->title, strlen(title) + 1, 0, strlen (title));
-    copy_substring (id, self->id, strlen(id) + 1, 0, strlen (id));
+    self->image_url = mg_util_string_alloc_string (string_util,
+            strlen (image_url));
+    self->title = mg_util_string_alloc_string (string_util,
+            strlen (title));
+    self->id = mg_util_string_alloc_string (string_util,
+            strlen (id));
+    mg_util_string_copy_substring (string_util,
+            image_url, self->image_url,
+            strlen(image_url) + 1, 0, strlen (image_url));
+    mg_util_string_copy_substring (string_util,
+            title, self->title, strlen(title) + 1, 0, strlen (title));
+    mg_util_string_copy_substring (string_util,
+            id, self->id, strlen(id) + 1, 0, strlen (id));
     return self;
 }

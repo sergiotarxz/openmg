@@ -6,4 +6,4 @@ LDFLAGS := $(shell pkg-config --libs ${LIBS})
 CC_COMMAND := ${CC} ${INCDIR} ${CFLAGS}
 all: build
 build:
-	${CC_COMMAND} src/util/xml.c src/util/soup.c src/view/list_view_manga.c src/view/main_view.c src/manga.c src/backend/readmng.c manga.c main.c -o main ${LDFLAGS} -ggdb
+	${CC_COMMAND} src/util/string.c src/util/xml.c src/util/soup.c src/view/list_view_manga.c src/view/main_view.c src/manga.c src/backend/readmng.c manga.c main.c -o main ${LDFLAGS} -ggdb
