@@ -1,21 +1,42 @@
-#include <libsoup/soup.h>
+#include <glib-object.h>
+
 #ifndef PCRE2_CODE_UNIT_WIDTH
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 #endif
 
+#include <openmg/util/regex.h>
 #include <openmg/util/string.h>
 
-#include <manga.h>
+struct _MgUtilRegex {
+    GObject parent_instance;
+};
 
-// TODO: Split this file and delete it.
+G_DEFINE_TYPE (MgUtilRegex, mg_util_regex, G_TYPE_OBJECT)
+
 static void
-iterate_string_to_split(struct SplittedString *splitted_string,
+mg_util_regex_class_init (MgUtilRegexClass *class) {
+}
+static void
+mg_util_regex_init (MgUtilRegex *class) {
+}
+
+static void
+mg_util_regex_iterate_string_to_split (MgUtilRegex *self,
+        struct SplittedString *splitted_string,
         pcre2_code *re, int *will_break, const char *subject,
         size_t subject_size, size_t *start_pos, size_t *offset);
 
+MgUtilRegex *
+mg_util_regex_new () {
+    MgUtilRegex *self = NULL;
+    self = MG_UTIL_REGEX ((g_object_new (MG_TYPE_UTIL_REGEX, NULL)));
+    return self;
+}
+
 struct SplittedString *
-split(char *re_str, size_t re_str_size, const char *subject, size_t subject_size) {
+mg_util_regex_split (MgUtilRegex *self,
+        char *re_str, size_t re_str_size, const char *subject, size_t subject_size) {
     pcre2_code_8 *re;
     size_t start_pos = 0;
     size_t offset    = 0;
@@ -31,7 +52,8 @@ split(char *re_str, size_t re_str_size, const char *subject, size_t subject_size
             re_str_size, 0, &regex_compile_error, &error_offset, NULL);
     while (start_pos < subject_size) {
         int will_break = 0;
-        iterate_string_to_split(splitted_string, re, &will_break,
+        mg_util_regex_iterate_string_to_split (self,
+                splitted_string, re, &will_break,
                 subject, subject_size, &start_pos, &offset);
         if (will_break) {
             break;
@@ -43,8 +65,10 @@ split(char *re_str, size_t re_str_size, const char *subject, size_t subject_size
 
     return splitted_string;
 }
+
 void
-splitted_string_free (struct SplittedString *splitted_string) {
+mg_util_regex_splitted_string_free (MgUtilRegex *self,
+        struct SplittedString *splitted_string) {
     for (int i = 0; i<splitted_string->n_strings; i++) {
         g_free (splitted_string->substrings[i].content);
     }
@@ -54,8 +78,9 @@ splitted_string_free (struct SplittedString *splitted_string) {
 }
 
 static void
-iterate_string_to_split(struct SplittedString *splitted_string,
-    pcre2_code *re, int *will_break, const char *subject,
+mg_util_regex_iterate_string_to_split (MgUtilRegex *self,
+        struct SplittedString *splitted_string,
+        pcre2_code *re, int *will_break, const char *subject,
         size_t subject_size, size_t *start_pos, size_t *offset) {
     pcre2_match_data_8 *match_data;
     PCRE2_SIZE *ovector;
@@ -104,7 +129,8 @@ cleanup_iterate_string_to_split:
 }
 
 char *
-match_1 (char *re_str, char *subject) {
+mg_util_regex_match_1 (MgUtilRegex *self,
+        char *re_str, char *subject) {
     pcre2_code *re;    
     pcre2_match_data *match_data;
 

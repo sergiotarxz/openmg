@@ -4,6 +4,7 @@
 #include <libxml/xpath.h>
 
 #include <openmg/util/string.h>
+#include <openmg/util/regex.h>
 #include <openmg/util/xml.h>
 
 struct _MgUtilXML {
@@ -94,8 +95,9 @@ mg_util_xml_has_class (MgUtilXML *self,
         const char *class_attribute, const char *class_to_check) {
     char *re = "\\s+";
     struct SplittedString *classes;
+    MgUtilRegex *regex_util = mg_util_regex_new ();
     int return_value = 0;
-    classes = split (re, strlen(re), class_attribute,
+    classes = mg_util_regex_split (regex_util, re, strlen(re), class_attribute,
             strlen (class_attribute));
     for (int i = 0; i<classes->n_strings; i++) {
         if (strcmp (classes->substrings[i].content, class_to_check) == 0) {
@@ -105,7 +107,7 @@ mg_util_xml_has_class (MgUtilXML *self,
     }
 
 cleanup_has_class:
-    splitted_string_free (classes);
+    mg_util_regex_splitted_string_free (regex_util, classes);
     return return_value;
 }
 

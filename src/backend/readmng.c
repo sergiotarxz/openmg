@@ -2,6 +2,7 @@
 
 #include <openmg/backend/readmng.h>
 #include <openmg/util/soup.h>
+#include <openmg/util/regex.h>
 #include <openmg/util/xml.h>
 #include <openmg/manga.h>
 
@@ -255,7 +256,8 @@ static char *
 mg_backend_get_id_manga_link (MgBackendReadmng *self, xmlNodePtr a) {
     char *re_str = "readmng\\.com/([^/]+)";
     MgUtilXML *xml_utils = self->xml_utils;
-    return match_1 (re_str, mg_util_xml_get_attr (xml_utils, a, "href"));
+    MgUtilRegex *regex_util = mg_util_regex_new ();
+    return mg_util_regex_match_1 (regex_util, re_str, mg_util_xml_get_attr (xml_utils, a, "href"));
 }
 
 static void

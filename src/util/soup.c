@@ -28,7 +28,6 @@ mg_util_soup_get_request (MgUtilSoup *self, const char *url, gsize *size_respons
     SoupSession *soup_session;
     SoupMessage *msg;
     GValue response = G_VALUE_INIT;
-    guint status;
 
     *size_response_text = 0;
 
@@ -36,7 +35,7 @@ mg_util_soup_get_request (MgUtilSoup *self, const char *url, gsize *size_respons
 
     soup_session = soup_session_new ();
     msg = soup_message_new ("GET", url);
-    status = soup_session_send_message (soup_session, msg);
+    soup_session_send_message (soup_session, msg);
     g_object_get_property(
             G_OBJECT (msg),
             "response-body-data",
