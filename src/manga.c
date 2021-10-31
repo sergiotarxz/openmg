@@ -3,8 +3,6 @@
 #include <openmg/util/string.h>
 #include <openmg/manga.h>
 
-#include <manga.h>
-
 struct _MgManga {
     GObject parent_instance;
     char *image_url;

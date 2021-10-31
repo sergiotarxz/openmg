@@ -5,8 +5,6 @@
 #include <libxml/HTMLparser.h>
 #include <libxml/xpath.h>
 
-#include <manga.h> //Nasty file
-
 G_BEGIN_DECLS;
 
 #define XML_COPY_NODE_RECURSIVE 2 | 1

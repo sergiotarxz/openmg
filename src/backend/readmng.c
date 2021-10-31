@@ -6,8 +6,6 @@
 #include <openmg/util/xml.h>
 #include <openmg/manga.h>
 
-#include <manga.h>
-
 typedef enum {
     MG_BACKEND_READMNG_BASE_URL = 1,
     MG_BACKEND_READMNG_N_PROPERTIES

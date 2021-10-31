@@ -5,8 +5,6 @@
 
 #include <openmg/view/list_view_manga.h>
 
-#include <manga.h>
-
 static void
 g_object_set_property_int(GObject *object, char *property_key, int value);
 static void

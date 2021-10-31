@@ -6,7 +6,6 @@
 #include <openmg/view/list_view_manga.h>
 
 #include <readmng.h>
-#include <manga.h>
 
 static AdwHeaderBar *
 create_headerbar (GtkBox *box);
