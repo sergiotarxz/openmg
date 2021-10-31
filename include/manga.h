@@ -24,7 +24,12 @@ struct String {
 
 struct SplittedString *
 split(char *re_str, size_t re_str_size, const char *subject, size_t subject_size);
+char *
+alloc_string(size_t len);
 void
 splitted_string_free (struct SplittedString *splitted_string);
 char *
 match_1 (char *re_str, char *subject);
+void
+copy_substring(const char *origin, char *dest, size_t dest_len, size_t start,
+        size_t len);

@@ -4,8 +4,6 @@
 #include <pcre2.h>
 #endif
 
-#include <openmg/util/string.h>
-
 #include <manga.h>
 
 // TODO: Split this file and delete it.
@@ -14,6 +12,20 @@ iterate_string_to_split(struct SplittedString *splitted_string,
         pcre2_code *re, int *will_break, const char *subject,
         size_t subject_size, size_t *start_pos, size_t *offset);
 
+void
+copy_substring(const char *origin, char *dest, size_t dest_len, size_t start,
+        size_t len) {
+    size_t copying_offset = 0;
+    while (copying_offset < len) {
+        if (!(start+copying_offset <=dest_len)) {
+            fprintf(stderr, "Read attempt out of bounds.%ld %ld %ld\n", dest_len, start, len);
+            break;
+        }
+        dest[copying_offset] = origin[start+copying_offset];
+        copying_offset++;
+    }
+    dest[len] = '\0';
+}
 struct SplittedString *
 split(char *re_str, size_t re_str_size, const char *subject, size_t subject_size) {
     pcre2_code_8 *re;
@@ -43,6 +55,13 @@ split(char *re_str, size_t re_str_size, const char *subject, size_t subject_size
 
     return splitted_string;
 }
+
+char *
+alloc_string(size_t len) {
+    char * return_value = NULL;
+    return g_malloc (len + 1 * sizeof *return_value);
+}
+
 void
 splitted_string_free (struct SplittedString *splitted_string) {
     for (int i = 0; i<splitted_string->n_strings; i++) {
@@ -54,13 +73,11 @@ splitted_string_free (struct SplittedString *splitted_string) {
 }
 
 static void
-iterate_string_to_split(struct SplittedString *splitted_string,
-    pcre2_code *re, int *will_break, const char *subject,
+iterate_string_to_split(struct SplittedString *splitted_string, pcre2_code *re, int *will_break, const char *subject,
         size_t subject_size, size_t *start_pos, size_t *offset) {
     pcre2_match_data_8 *match_data;
     PCRE2_SIZE *ovector;
     int rc;
-    MgUtilString *string_util = mg_util_string_new ();
 
     splitted_string->n_strings++;
     match_data = pcre2_match_data_create_from_pattern_8 (re, NULL);
@@ -75,22 +92,24 @@ iterate_string_to_split(struct SplittedString *splitted_string,
     if (rc < 0) {
         struct String *current_substring = 
             &splitted_string->substrings [*offset];
-        current_substring->content = mg_util_string_alloc_string (string_util,
+        current_substring->content = alloc_string (subject_size 
+                - *start_pos);
+        copy_substring (subject, current_substring->content,
+                subject_size,
+                *start_pos,
                 subject_size - *start_pos);
-        mg_util_string_copy_substring (string_util, subject,
-                current_substring->content, subject_size,
-                *start_pos, subject_size - *start_pos);
         current_substring->size = subject_size - *start_pos;
 
         *will_break = 1;
         goto cleanup_iterate_string_to_split;
     }
     ovector = pcre2_get_ovector_pointer_8(match_data);
-    splitted_string->substrings[*offset].content = 
-        mg_util_string_alloc_string (string_util, ovector[0] - *start_pos);
-    mg_util_string_copy_substring (string_util,
-            subject, splitted_string->substrings[*offset].content,
-            subject_size, *start_pos,
+    splitted_string->substrings[*offset].content = alloc_string (
+            ovector[0] - *start_pos);
+    copy_substring (subject, splitted_string->substrings[*offset]
+            .content,
+            subject_size,
+            *start_pos,
             ovector[0] - *start_pos);
     splitted_string->substrings[*offset].size =
         ovector[0] - *start_pos;
