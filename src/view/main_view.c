@@ -6,9 +6,11 @@
 #include <openmg/view/list_view_manga.h>
 
 static AdwHeaderBar *
-create_headerbar (GtkBox *box);
+create_headerbar (GtkBox *box, AdwLeaflet *views_leaflet);
 static GtkBox *
 create_main_box (AdwApplicationWindow *window);
+static void
+go_back_view (GtkButton *previous, gpointer user_data);
 
 static void
 activate (AdwApplication *app,
@@ -26,7 +28,7 @@ activate (AdwApplication *app,
     AdwLeaflet *views_leaflet = ADW_LEAFLET (adw_leaflet_new ());
     adw_leaflet_set_can_swipe_back (views_leaflet, 1);
 
-    create_headerbar (box);
+    create_headerbar (box, views_leaflet);
 
     mangas = mg_backend_readmng_get_featured_manga (readmng);
     list_view = create_list_view_mangas (mangas, views_leaflet);
@@ -56,7 +58,7 @@ create_main_box (AdwApplicationWindow *window) {
 }
 
 static AdwHeaderBar *
-create_headerbar (GtkBox *box) {
+create_headerbar (GtkBox *box, AdwLeaflet *views_leaflet) {
     GtkWidget *title =
         adw_window_title_new ("Window", NULL);
     GtkWidget *header =
@@ -66,6 +68,8 @@ create_headerbar (GtkBox *box) {
             GTK_WIDGET (title));
     gtk_box_append (box, header);
     GtkWidget *previous = gtk_button_new_from_icon_name ("go-previous-symbolic");
+    g_signal_connect (G_OBJECT (previous), "clicked", G_CALLBACK (go_back_view),
+            views_leaflet);
 
     adw_header_bar_pack_start (ADW_HEADER_BAR (header), previous);
  
@@ -73,6 +77,11 @@ create_headerbar (GtkBox *box) {
     return ADW_HEADER_BAR (header);
 }
 
+static void
+go_back_view (GtkButton *previous, gpointer user_data) {
+    AdwLeaflet *views_leaflet = ADW_LEAFLET (user_data);
+    adw_leaflet_navigate (views_leaflet, ADW_NAVIGATION_DIRECTION_BACK);
+}
 int
 main_view_run (int argc,
         char **argv)
