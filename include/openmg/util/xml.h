@@ -31,5 +31,7 @@ mg_util_xml_get_nodes_xpath_expression (MgUtilXML *self,
 int
 mg_util_xml_has_class (MgUtilXML *self, 
         const char *class_attribute, const char *class_to_check);
-
+char *
+mg_util_xml_get_title_text (MgUtilXML *self,
+        const char *const text);
 G_END_DECLS

@@ -1,5 +1,7 @@
 #include <glib-object.h>
 
+#include <pango/pango.h>
+
 #include <libxml/HTMLparser.h>
 #include <libxml/xpath.h>
 
@@ -20,6 +22,9 @@ mg_util_xml_class_init (MgUtilXMLClass *class) {
 static void
 mg_util_xml_init (MgUtilXML *self) {
 }
+static char *
+mg_util_xml_get_as_char_node (MgUtilXML *self,
+        xmlNodePtr node, xmlDocPtr document);
 
 MgUtilXML *
 mg_util_xml_new () {
@@ -139,4 +144,42 @@ mg_util_xml_get_nodes_xpath_expression (MgUtilXML *self,
     xmlXPathFreeContext (context);
 
     return result;
+}
+
+char *
+mg_util_xml_get_title_text (MgUtilXML *self,
+        const char *const text) {
+    xmlDocPtr document = xmlNewDoc ((xmlChar *) "1.0");
+    xmlNodePtr root_node = xmlNewNode (NULL, (xmlChar *) "span");
+    xmlNodePtr text_content = NULL;
+    xmlDocSetRootElement (document, root_node);
+    char *size_text = NULL;
+    size_text = g_malloc (sizeof *size_text * 2000);
+
+    text_content = xmlNewText ((xmlChar *) text);
+    xmlAddChild (root_node, text_content);
+    snprintf (size_text, 2000, "%d", 40 * PANGO_SCALE);
+    xmlNewProp (root_node, (xmlChar *) "size", (xmlChar *) size_text);
+
+    return mg_util_xml_get_as_char_node (self, root_node, document);
+}
+
+static char *
+mg_util_xml_get_as_char_node (MgUtilXML *self,
+        xmlNodePtr node, xmlDocPtr document) {
+    xmlBufferPtr buffer = xmlBufferCreate ();
+    const char *buffer_contents;
+    char *return_value = NULL;
+    size_t buffer_len;
+    MgUtilString *string_util = NULL;
+    xmlNodeDump (buffer, document, node, 0, 1);
+
+    buffer_contents = (char *) xmlBufferContent (buffer);
+    buffer_len = strlen (buffer_contents);
+    return_value = mg_util_string_alloc_string (string_util, buffer_len);
+    mg_util_string_copy_substring (string_util, buffer_contents,
+            return_value, buffer_len, 0, buffer_len);
+
+    xmlBufferFree (buffer);
+    return return_value;
 }
