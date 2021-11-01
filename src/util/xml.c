@@ -158,7 +158,7 @@ mg_util_xml_get_title_text (MgUtilXML *self,
 
     text_content = xmlNewText ((xmlChar *) text);
     xmlAddChild (root_node, text_content);
-    snprintf (size_text, 2000, "%d", 40 * PANGO_SCALE);
+    snprintf (size_text, 2000, "%d", 30 * PANGO_SCALE);
     xmlNewProp (root_node, (xmlChar *) "size", (xmlChar *) size_text);
 
     return mg_util_xml_get_as_char_node (self, root_node, document);
