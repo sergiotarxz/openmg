@@ -98,6 +98,8 @@ create_list_view_mangas (GListStore *mangas, AdwLeaflet *views_leaflet) {
 
     list_view_manga = GTK_LIST_VIEW (gtk_list_view_new (GTK_SELECTION_MODEL (selection),
                 factory));
+    g_object_set_property_int (G_OBJECT (list_view_manga),
+            "single-click-activate", 1);
 
     g_signal_connect (G_OBJECT (list_view_manga), "activate",
             G_CALLBACK (manga_selected), manga_pressed_values);
