@@ -4,38 +4,43 @@
 
 #include <openmg/manga.h>
 #include <openmg/util/soup.h>
+#include <openmg/util/gobject_utility_extensions.h>
 
+#include <openmg/view/detail_manga.h>
 #include <openmg/view/list_view_manga.h>
+#include <openmg/view/picture.h>
 
-static void
-g_object_set_property_int(GObject *object, char *property_key, int value);
+typedef struct {
+    GtkListView *list_view;
+    AdwLeaflet *views_leaflet;
+} ActivationValues;
+
 static void
 setup_list_view_mangas (GtkSignalListItemFactory *factory,
         GtkListItem *list_item,
         gpointer user_data);
 
-typedef struct {
-    GListStore *mangas;
-    AdwLeaflet *views_leaflet;
-} MangaPressedValues;
-
 static void
 manga_selected (GtkListView *list_view, 
         guint position,
         gpointer user_data) {
-    MangaPressedValues *manga_pressed_values = (MangaPressedValues *) user_data;
-    AdwLeaflet *views_leaflet = manga_pressed_values->views_leaflet;
-    GtkBox *box = GTK_BOX (gtk_box_new (GTK_ORIENTATION_VERTICAL, 0));
+    AdwLeaflet *views_leaflet = ADW_LEAFLET (user_data);
+    GtkSingleSelection *selection = GTK_SINGLE_SELECTION 
+        (gtk_list_view_get_model (list_view));
+    GListModel *mangas = gtk_single_selection_get_model (selection);
+    MgManga *manga = MG_MANGA (g_list_model_get_item (mangas, position));
+
     GtkWidget *widget = adw_leaflet_get_adjacent_child (views_leaflet,
             ADW_NAVIGATION_DIRECTION_FORWARD);
 
     while (widget) {
         adw_leaflet_remove (views_leaflet, widget);
         widget = adw_leaflet_get_adjacent_child (views_leaflet,
-            ADW_NAVIGATION_DIRECTION_FORWARD);
+                ADW_NAVIGATION_DIRECTION_FORWARD);
     }
 
-    adw_leaflet_append (views_leaflet, GTK_WIDGET (box));
+    GtkBox *detail_view = create_detail_view (manga);
+    adw_leaflet_append (views_leaflet, GTK_WIDGET (detail_view));
     adw_leaflet_navigate (views_leaflet, ADW_NAVIGATION_DIRECTION_FORWARD);
 }
 
@@ -47,35 +52,9 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
     GtkBox *box = GTK_BOX (gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0));
 
     GtkWidget *label = gtk_label_new (mg_manga_get_title (manga));
-    GtkWidget *picture;
+    GtkWidget *picture = GTK_WIDGET (
+            create_picture_from_url (mg_manga_get_image_url(manga), 200));
 
-    GFileIOStream *iostream;
-    GFile *tmp_image;
-    GError *error = NULL;
-
-    size_t size_downloaded_image = 0;
-    char *downloaded_image;
-
-    MgUtilSoup *util_soup = mg_util_soup_new ();
-    downloaded_image = mg_util_soup_get_request (util_soup, mg_manga_get_image_url(manga),
-            &size_downloaded_image);
-    tmp_image = g_file_new_tmp ("mangareadertmpfileXXXXXX",
-            &iostream,
-            &error
-            );
-    if (error) {
-        fprintf (stderr, "Unable to read file: %s\n", error->message);
-        return;
-    }
-    error = NULL;
-    g_output_stream_write (g_io_stream_get_output_stream (G_IO_STREAM (iostream)),
-            downloaded_image, size_downloaded_image, NULL, &error);
-    if (error) {
-        fprintf (stderr, "Unable to write file: %s\n", error->message);
-        return;
-    }
-    picture = gtk_picture_new_for_file (tmp_image);
-    g_object_set_property_int (G_OBJECT(picture), "height-request", 200);
     gtk_box_append (box, picture);
     gtk_box_append (box, label);
     gtk_list_item_set_child (list_item, GTK_WIDGET (box));
@@ -85,12 +64,7 @@ GtkListView *
 create_list_view_mangas (GListStore *mangas, AdwLeaflet *views_leaflet) {
     GtkSingleSelection *selection = gtk_single_selection_new (G_LIST_MODEL (mangas));
     GtkListItemFactory *factory = gtk_signal_list_item_factory_new ();
-    MangaPressedValues *manga_pressed_values = NULL;
     GtkListView *list_view_manga = NULL;
-
-    manga_pressed_values = g_malloc (sizeof *manga_pressed_values);
-    manga_pressed_values->mangas = mangas;
-    manga_pressed_values->views_leaflet = views_leaflet;
 
     g_signal_connect (G_OBJECT (factory), "bind",
             G_CALLBACK (setup_list_view_mangas),
@@ -102,16 +76,6 @@ create_list_view_mangas (GListStore *mangas, AdwLeaflet *views_leaflet) {
             "single-click-activate", 1);
 
     g_signal_connect (G_OBJECT (list_view_manga), "activate",
-            G_CALLBACK (manga_selected), manga_pressed_values);
+            G_CALLBACK (manga_selected), views_leaflet);
     return list_view_manga;
 }
-
-static void
-g_object_set_property_int(GObject *object, char *property_key, int value) {
-    GValue property = G_VALUE_INIT;
-    g_value_init (&property, G_TYPE_INT);
-    g_value_set_int (&property, value);
-    g_object_set_property (object, property_key, &property);
-}
-
-
