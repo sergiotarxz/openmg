@@ -1,0 +1,18 @@
+
+app-id: me.sergiotarxz.openmg
+runtime: org.gnome.Platform
+runtime-version: master
+sdk: org.gnome.Sdk
+sdk-version: master
+command: openmg
+finish-args:
+  - "--share=ipc"
+  - "--socket=x11"
+  - "--share=network"
+  - "--device=dri"
+modules:
+  - name: openmg
+    buildsystem: meson
+    sources:
+      - type: dir
+        path: .
