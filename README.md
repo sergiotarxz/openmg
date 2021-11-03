@@ -1,13 +1,17 @@
 # mangareader
 
-## How to compile
+## Installing the app.
 
-Simply run `make` in the cloned directory and install the missing dev dependencies in your system if any.
+```shell
+flatpak --user remote-add --if-not-exists gnome-nightly https://nightly.gnome.org/gnome-nightly.flatpakrepo 
+flatpak install org.gnome.Sdk//master
+flatpak install org.gnome.Platform//master
+flatpak-builder --install --user build me.sergiotarxz.openmg.yml me.sergiotarxz.openmg
 
-Usually the packages you need end in -dev or -devel.
+```
 
-This is likely to change in the future to use the `meson` build system.
+## Running the app
 
-## How to run
-
-Run `./main` in the cloned directory.
+```shell
+flatpak run me.sergiotarxz.openmg
+```
