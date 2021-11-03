@@ -29,4 +29,8 @@ mg_backend_readmng_new (void);
 GListStore *
 mg_backend_readmng_get_featured_manga (MgBackendReadmng *self);
 
+void
+mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
+        MgManga *manga);
+
 G_END_DECLS
