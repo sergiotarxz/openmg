@@ -29,5 +29,6 @@ sources = [
 executable('openmg',
     sources,
     dependencies : openmgdeps,
-    include_directories : inc
+    include_directories : inc,
+    install : true
 )
