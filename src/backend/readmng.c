@@ -198,7 +198,9 @@ mg_backend_readmng_fetch_xml_details (MgBackendReadmng *self,
 static xmlDocPtr
 mg_backend_readmng_fetch_xml_main_page (MgBackendReadmng *self) {
     size_t size_response_text = 0;
-    return htmlReadMemory (mg_backend_readmng_get_main_page (self, &size_response_text),
+    const char *html_response = mg_backend_readmng_get_main_page (self, &size_response_text);
+
+    return htmlReadMemory (html_response,
             size_response_text,
             NULL,
             NULL,
