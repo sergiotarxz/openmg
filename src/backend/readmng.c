@@ -8,6 +8,7 @@
 #include <openmg/util/string.h>
 
 #include <openmg/manga.h>
+#include <openmg/chapter.h>
 
 typedef enum {
     MG_BACKEND_READMNG_BASE_URL = 1,
@@ -44,6 +45,17 @@ mg_backend_readmng_class_init (MgBackendReadmngClass *class) {
             mg_backend_readmng_properties);
 }
 
+static xmlNodePtr
+mg_backend_readmng_get_a_for_chapter (
+        MgBackendReadmng *self,
+        xmlNodePtr li);
+static MgMangaChapter *
+mg_backend_readmng_loop_li_chapter (
+        MgBackendReadmng *self,
+        xmlNodePtr li);
+static GListStore *
+mg_backend_readmng_recover_chapter_list (MgBackendReadmng *self,
+        xmlDocPtr html_document_details);
 static xmlDocPtr
 mg_backend_readmng_fetch_xml_details (MgBackendReadmng *self,
         MgManga *manga);
@@ -140,13 +152,15 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
     xmlNodePtr *movie_detail = NULL;
     xmlXPathObjectPtr xpath_result = NULL;
     xmlNodeSetPtr node_set = NULL;
+    GListStore *manga_chapters = NULL;
 
     size_t movie_detail_len = 0;
 
     if (mg_manga_has_details (manga)) {
         return;
     }
-    xml_utils = mg_util_xml_new ();
+    
+    xml_utils = self->xml_utils;
     html_document = mg_backend_readmng_fetch_xml_details (self,
         manga);
     xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
@@ -165,7 +179,85 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
         mg_manga_set_description (manga,
                 (char *) xmlNodeGetContent (movie_detail[0]));
     }
+    manga_chapters = mg_backend_readmng_recover_chapter_list (self, html_document);
+    mg_manga_set_chapter_list (manga, manga_chapters);
     mg_manga_details_recovered (manga);
+}
+
+static GListStore *
+mg_backend_readmng_recover_chapter_list (MgBackendReadmng *self,
+        xmlDocPtr html_document_details) {
+        MgUtilXML *xml_utils = self->xml_utils;
+    xmlXPathObjectPtr xpath_result = NULL;
+    xmlNodeSetPtr node_set = NULL;
+    xmlNodePtr *uls = NULL;
+    xmlNodePtr ul;
+    GListStore *return_value = g_list_store_new (
+            MG_TYPE_MANGA_CHAPTER);
+    size_t ul_len = 0;
+
+    xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
+            html_document_details, "//ul[@class]");
+    node_set = xpath_result->nodesetval;
+    if (!node_set) {
+        fprintf(stderr, "No matching ul\n");
+        return return_value;
+    }
+    for (int i = 0; i < node_set->nodeNr; i++) {
+        xmlNodePtr node = node_set->nodeTab[i];
+        uls = mg_util_xml_loop_search_class (xml_utils,
+                node, uls, "chp_lst", &ul_len);
+    }
+    if (!ul_len) {
+        fprintf(stderr, "No matching chp_lst\n");
+        return return_value;
+    }
+    ul = uls[0];
+    for (xmlNodePtr li = ul->children; li; li = li->next) {
+        if (!strcmp ((char *) li->name, "li")) {
+            MgMangaChapter *chapter = mg_backend_readmng_loop_li_chapter (self, li);
+            if (chapter) {
+                g_list_store_append (return_value, chapter);
+            }
+        }
+    }
+    return return_value;
+}
+
+static MgMangaChapter *
+mg_backend_readmng_loop_li_chapter (
+        MgBackendReadmng *self,
+        xmlNodePtr li) {
+    MgUtilXML *xml_utils = self->xml_utils;
+    xmlNodePtr a = mg_backend_readmng_get_a_for_chapter (
+            self, li);
+    if (!a) return NULL;
+
+    char *url = mg_util_xml_get_attr (xml_utils, a, "href");
+    size_t val_len = 0;
+    size_t dte_len = 0;
+
+    xmlNodePtr *val = mg_util_xml_find_class (xml_utils, a, "val", &val_len, NULL, 1);
+    xmlNodePtr *dte = mg_util_xml_find_class (xml_utils, a, "dte", &dte_len, NULL, 1);
+    if (val_len && dte_len) {
+        return mg_manga_chapter_new (
+                (char *) xmlNodeGetContent (val[0]),
+                (char *) xmlNodeGetContent(dte[0]),
+                url);
+    }
+    return NULL;
+}
+
+static xmlNodePtr
+mg_backend_readmng_get_a_for_chapter (
+        MgBackendReadmng *self,
+        xmlNodePtr li) {
+    for (xmlNodePtr child = li->children; child; child = child->next) {
+        if (!strcmp((char *) child->name, "a")) {
+            return child;
+        }
+    }
+    return NULL;
 }
 
 static xmlDocPtr

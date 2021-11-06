@@ -12,6 +12,7 @@ openmgdeps = [
 ]
 
 sources = [
+    'src/view/list_view_chapter.c',
     'src/view/picture.c',
     'src/util/gobject_utility_extensions.c',
     'src/view/detail_manga.c',
@@ -22,6 +23,7 @@ sources = [
     'src/view/list_view_manga.c',
     'src/view/main_view.c',
     'src/manga.c',
+    'src/chapter.c',
     'src/backend/readmng.c',
     'src/main.c',
 ]

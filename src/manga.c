@@ -1,7 +1,11 @@
+#include <stdio.h>
+
 #include <glib-object.h>
+#include <gio/gio.h>
 
 #include <openmg/util/string.h>
 #include <openmg/manga.h>
+#include <openmg/chapter.h>
 
 struct _MgManga {
     GObject parent_instance;
@@ -9,6 +13,7 @@ struct _MgManga {
     char *title;
     char *id;
     char *description;
+    GListStore *chapter_list;
     int has_details;
 };
 
@@ -19,6 +24,7 @@ typedef enum {
     MG_MANGA_TITLE,
     MG_MANGA_ID,
     MG_MANGA_DESCRIPTION,
+    MG_MANGA_CHAPTER_LIST,
     MG_MANGA_N_PROPERTIES
 } MgMangaProperties;
 
@@ -62,6 +68,13 @@ mg_manga_class_init (MgMangaClass *class) {
             "Description of the manga.",
             NULL,
             G_PARAM_READWRITE);
+    manga_properties[MG_MANGA_CHAPTER_LIST] = g_param_spec_object (
+            "chapter_list",
+            "ChapterList",
+            "List of chapters.",
+            G_TYPE_LIST_STORE,
+            G_PARAM_READWRITE);
+
 
     g_object_class_install_properties (object_class,
             MG_MANGA_N_PROPERTIES,
@@ -123,6 +136,24 @@ mg_manga_get_description (MgManga *self) {
     return g_value_dup_string (&value);
 }
 
+GListStore *
+mg_manga_get_chapter_list (MgManga *self) {
+    if (!mg_manga_has_details (self)) {
+        fprintf(stderr, "Manga has still not details\n");
+        return NULL;
+    }
+    GValue value = G_VALUE_INIT;
+    GListStore *return_value;
+
+    g_value_init (&value, G_TYPE_LIST_STORE);
+    g_object_get_property (G_OBJECT (self),
+            "chapter_list",
+            &value);
+    return_value = G_LIST_STORE (g_value_peek_pointer (&value));
+
+    return return_value;
+}
+
 void
 mg_manga_set_description (MgManga *self, const char *description) {
     GValue value = G_VALUE_INIT;
@@ -131,12 +162,21 @@ mg_manga_set_description (MgManga *self, const char *description) {
     g_object_set_property (G_OBJECT (self), "description", &value);
 }
 
+void
+mg_manga_set_chapter_list (MgManga *self, GListStore *chapter_list) {
+    GValue value = G_VALUE_INIT;
+    g_value_init (&value, G_TYPE_LIST_STORE);
+    g_value_set_instance (&value, chapter_list);
+    g_object_set_property (G_OBJECT (self), "chapter_list", &value);
+}
+
 static void
 mg_manga_set_property (GObject *object,
         guint property_id,
         const GValue *value,
         GParamSpec *pspec) {
     MgManga *self = MG_MANGA (object);
+    GListStore *chapter_list;
     switch ((MgMangaProperties) property_id) {
         case MG_MANGA_IMAGE_URL:
             g_free (self->image_url);
@@ -153,6 +193,11 @@ mg_manga_set_property (GObject *object,
         case MG_MANGA_DESCRIPTION:
             g_free (self->description);
             self->description = g_value_dup_string (value);
+            break;
+        case MG_MANGA_CHAPTER_LIST:
+            g_free (self->chapter_list);
+            chapter_list = g_value_peek_pointer (value);
+            self->chapter_list = chapter_list;
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -178,6 +223,9 @@ mg_manga_get_property (GObject *object,
             break;
         case MG_MANGA_DESCRIPTION:
             g_value_set_string (value, self->description);
+            break;
+        case MG_MANGA_CHAPTER_LIST:
+            g_value_set_instance (value, self->chapter_list);
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

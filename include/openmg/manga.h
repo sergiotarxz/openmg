@@ -22,6 +22,10 @@ int
 mg_manga_has_details (MgManga *self);
 void
 mg_manga_details_recovered (MgManga *self);
+void
+mg_manga_set_chapter_list (MgManga *self, GListStore *chapter_list);
+GListStore *
+mg_manga_get_chapter_list (MgManga *self);
 
 MgManga *mg_manga_new (const char *const image_url, const char *const title, const char *const id);
 
