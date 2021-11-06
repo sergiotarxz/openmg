@@ -12,7 +12,7 @@
 #include <openmg/view/detail_manga.h>
 #include <openmg/view/list_view_chapter.h>
 
-GtkBox *
+GtkScrolledWindow *
 create_detail_view (MgManga *manga) {
     MgBackendReadmng *readmng = mg_backend_readmng_new ();
     GtkWidget *scroll;
@@ -39,15 +39,17 @@ create_detail_view (MgManga *manga) {
 
     gtk_label_set_wrap (manga_title, 1);
     gtk_label_set_wrap (manga_description, 1);
+    gtk_widget_set_size_request (GTK_WIDGET (manga_description), 200, -1);
 
     gtk_label_set_use_markup (GTK_LABEL (manga_title), 1);
     gtk_box_append (avatar_title_box, GTK_WIDGET (manga_image));
     gtk_box_append (avatar_title_box, GTK_WIDGET (manga_title));
     gtk_box_append (detail_view, GTK_WIDGET (avatar_title_box));
     gtk_box_append (detail_view, GTK_WIDGET (manga_description));
-    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll), GTK_WIDGET (chapter_list));
+    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll), GTK_WIDGET (detail_view));
+    gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
     g_object_set_property_int (G_OBJECT (scroll), "vexpand", 1);
-    gtk_box_append (detail_view, GTK_WIDGET (scroll));
+    gtk_box_append (detail_view, GTK_WIDGET (chapter_list));
 
-    return detail_view;
+    return GTK_SCROLLED_WINDOW (scroll);
 }

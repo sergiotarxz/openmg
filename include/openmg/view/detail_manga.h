@@ -1,4 +1,4 @@
 #include <openmg/manga.h>
 
-GtkBox *
+GtkScrolledWindow *
 create_detail_view (MgManga *manga);
