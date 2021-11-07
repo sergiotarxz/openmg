@@ -36,14 +36,15 @@ mg_util_xml_new () {
 xmlNodePtr *
 mg_util_xml_find_class (MgUtilXML *self, xmlNodePtr node, char *class,
         size_t *len, xmlNodePtr *nodes, int return_on_first) {
+    char *attr = NULL;
     for (xmlNodePtr child = node->children; child; child=child->next) {
-        char *attr = mg_util_xml_get_attr (self, child, "class");
+        attr = mg_util_xml_get_attr (self, child, "class");
         if (attr && mg_util_xml_has_class (self, attr, class)) {
             (*len)++;
             nodes = g_realloc (nodes, sizeof *nodes * *len);
             nodes[*len-1] = child;
             if (return_on_first) {
-                return nodes;
+                goto cleanup_mg_util_xml_find_class;
             }
         }
         if (node->children) {
@@ -52,10 +53,14 @@ mg_util_xml_find_class (MgUtilXML *self, xmlNodePtr node, char *class,
                 nodes = mg_util_xml_find_class (self, child, class,
                         len, nodes, return_on_first);
                 if (*len) {
-                    return nodes;
+                    goto cleanup_mg_util_xml_find_class;
                 }
             }
         }
+    }
+cleanup_mg_util_xml_find_class:
+    if (attr) {
+        g_free (attr);
     }
     return nodes;
 }

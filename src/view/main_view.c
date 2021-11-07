@@ -44,6 +44,7 @@ activate (AdwApplication *app,
     gtk_box_append (box, GTK_WIDGET (views_leaflet));
 
     gtk_widget_show (window);
+    g_clear_object (&readmng);
 }
 
 static GtkBox *

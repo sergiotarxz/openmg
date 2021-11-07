@@ -29,10 +29,14 @@ G_DEFINE_TYPE (MgBackendReadmng, mg_backend_readmng, G_TYPE_OBJECT)
 static GParamSpec *mg_backend_readmng_properties[MG_BACKEND_READMNG_N_PROPERTIES] = { NULL, };
 
 static void
+mg_backend_readmng_dispose (GObject *object);
+
+static void
 mg_backend_readmng_class_init (MgBackendReadmngClass *class) {
     GObjectClass *object_class = G_OBJECT_CLASS (class);
     object_class->set_property = mg_backend_readmng_set_property;
     object_class->get_property = mg_backend_readmng_get_property;
+    object_class->dispose = mg_backend_readmng_dispose;
 
     mg_backend_readmng_properties[MG_BACKEND_READMNG_BASE_URL] = g_param_spec_string ("base_url",
             "BaseURL",
@@ -89,6 +93,16 @@ mg_backend_readmng_init (MgBackendReadmng *self) {
     }
     self->xml_utils = mg_util_xml_new ();
 }
+static void
+mg_backend_readmng_dispose (GObject *object) {
+    MgBackendReadmng *self = MG_BACKEND_READMNG (object);
+    g_clear_object (&self->xml_utils);
+    if (self->main_page_html) {
+        g_free (self->main_page_html);
+        self->main_page_html = NULL;
+    }
+    G_OBJECT_CLASS (mg_backend_readmng_parent_class)->dispose (object);
+}
 
 char *
 mg_backend_readmng_get_base_url (MgBackendReadmng *self) {
@@ -139,6 +153,8 @@ mg_backend_readmng_get_featured_manga (MgBackendReadmng *self) {
     xmlDocPtr html_document;
     html_document = mg_backend_readmng_fetch_xml_main_page (self);
     mangas = mg_backend_readmng_parse_main_page (self, html_document);
+
+    xmlFreeDoc (html_document);
     return mangas;
 
 }
@@ -157,7 +173,7 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
     size_t movie_detail_len = 0;
 
     if (mg_manga_has_details (manga)) {
-        return;
+        goto cleanup_mg_backend_readmng_retrieve_manga_details;
     }
     
     xml_utils = self->xml_utils;
@@ -168,7 +184,7 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
     node_set = xpath_result->nodesetval;
     if (!node_set) {
         fprintf(stderr, "No match\n");
-        return;
+        goto cleanup_mg_backend_readmng_retrieve_manga_details;
     }
     for (int i = 0; i < node_set->nodeNr; i++) {
         xmlNodePtr node = node_set->nodeTab[i];
@@ -182,6 +198,8 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
     manga_chapters = mg_backend_readmng_recover_chapter_list (self, html_document);
     mg_manga_set_chapter_list (manga, manga_chapters);
     mg_manga_details_recovered (manga);
+cleanup_mg_backend_readmng_retrieve_manga_details:
+    g_free (movie_detail);
 }
 
 static GListStore *
@@ -201,7 +219,7 @@ mg_backend_readmng_recover_chapter_list (MgBackendReadmng *self,
     node_set = xpath_result->nodesetval;
     if (!node_set) {
         fprintf(stderr, "No matching ul\n");
-        return return_value;
+        goto cleanup_mg_backend_readmng_recover_chapter_list;
     }
     for (int i = 0; i < node_set->nodeNr; i++) {
         xmlNodePtr node = node_set->nodeTab[i];
@@ -210,7 +228,7 @@ mg_backend_readmng_recover_chapter_list (MgBackendReadmng *self,
     }
     if (!ul_len) {
         fprintf(stderr, "No matching chp_lst\n");
-        return return_value;
+        goto cleanup_mg_backend_readmng_recover_chapter_list;
     }
     ul = uls[0];
     for (xmlNodePtr li = ul->children; li; li = li->next) {
@@ -220,6 +238,10 @@ mg_backend_readmng_recover_chapter_list (MgBackendReadmng *self,
                 g_list_store_append (return_value, chapter);
             }
         }
+    }
+cleanup_mg_backend_readmng_recover_chapter_list:
+    if (uls) {
+        g_free (uls);
     }
     return return_value;
 }
@@ -282,6 +304,7 @@ mg_backend_readmng_fetch_xml_details (MgBackendReadmng *self,
 
     char *html_response = mg_util_soup_get_request (util_soup,
             request_url, &response_len);
+    g_object_unref (util_soup);
     return htmlReadMemory (html_response, response_len, NULL, NULL,
             HTML_PARSE_RECOVER | HTML_PARSE_NODEFDTD
             | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING );
@@ -307,6 +330,7 @@ mg_backend_readmng_get_main_page (MgBackendReadmng *self, size_t *len) {
         MgUtilSoup *util_soup = mg_util_soup_new ();
         self->main_page_html = mg_util_soup_get_request (util_soup,
                 self->base_url, &self->main_page_html_len);
+        g_object_unref (util_soup);
     }
     if (len) {
         *len = self->main_page_html_len;
@@ -329,6 +353,7 @@ mg_backend_readmng_parse_main_page (MgBackendReadmng *self, const xmlDocPtr html
                 mangas, current_li);
 
     }
+    g_free (li);
     return mangas;
 }
 
@@ -368,7 +393,7 @@ mg_backend_readmng_retrieve_slides (MgBackendReadmng *self, const xmlDocPtr html
     node_set = xpath_result->nodesetval;
     if (!node_set) {
         fprintf(stderr, "No match\n");
-        return NULL;
+        goto cleanup_mg_backend_readmng_retrieve_slides;
     }
     for (int i = 0; i < node_set->nodeNr; i++) {
         xmlNodePtr node = node_set->nodeTab[i];
@@ -381,6 +406,8 @@ mg_backend_readmng_retrieve_slides (MgBackendReadmng *self, const xmlDocPtr html
     if (xpath_result) {
         xmlXPathFreeObject(xpath_result);
     }
+cleanup_mg_backend_readmng_retrieve_slides:
+    g_free (nodes);
     return slides;
 }
 
