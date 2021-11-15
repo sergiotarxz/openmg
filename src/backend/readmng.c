@@ -1,3 +1,4 @@
+#include <gtk/gtk.h>
 #include <libxml/HTMLparser.h>
 
 #include <openmg/backend/readmng.h>
@@ -57,6 +58,12 @@ static MgMangaChapter *
 mg_backend_readmng_loop_li_chapter (
         MgBackendReadmng *self,
         xmlNodePtr li);
+static GListModel *
+mg_backend_readmng_parse_page (MgBackendReadmng *self,
+        xmlDocPtr html_document);
+static xmlDocPtr
+mg_backend_readmng_fetch_page_url (MgBackendReadmng *self,
+        MgMangaChapter *chapter);
 static GListStore *
 mg_backend_readmng_recover_chapter_list (MgBackendReadmng *self,
         xmlDocPtr html_document_details);
@@ -147,6 +154,67 @@ mg_backend_readmng_get_property (GObject *object,
     }
 }
 
+GListModel *
+mg_backend_readmng_get_chapter_images (MgBackendReadmng *self, MgMangaChapter *chapter) {
+    GListModel *images;
+    xmlDocPtr html_document;
+    html_document = mg_backend_readmng_fetch_page_url (self, chapter);
+    images = mg_backend_readmng_parse_page (self, html_document);
+
+    xmlFreeDoc (html_document);
+    return images;
+}
+
+static GListModel *
+mg_backend_readmng_parse_page (MgBackendReadmng *self,
+        xmlDocPtr html_document) {
+    GListModel *images = G_LIST_MODEL 
+        (gtk_string_list_new (NULL));
+
+    MgUtilXML *xml_utils = self->xml_utils;
+    xmlXPathObjectPtr xpath_result = NULL;
+    xmlNodeSetPtr node_set = NULL;
+    xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
+            html_document, "//img[@class]");
+    node_set = xpath_result->nodesetval;
+    if (!node_set) {
+        fprintf(stderr, "No match for images.\n");
+        return images;
+    }
+    for (int i = 0; i < node_set->nodeNr; i++) {
+        xmlNodePtr node = node_set->nodeTab[i];
+        const char *image_url = mg_util_xml_get_attr (xml_utils, node, "src");    
+        gtk_string_list_append (GTK_STRING_LIST (images), (void *)image_url);
+    }
+
+    return images;
+}
+
+static xmlDocPtr
+mg_backend_readmng_fetch_page_url (MgBackendReadmng *self,
+        MgMangaChapter *chapter) {
+    size_t response_len = 0;
+    MgUtilSoup *util_soup = mg_util_soup_new ();
+    char *url = mg_manga_chapter_get_url (chapter);
+    size_t concat_all_pages_len;
+    char *concated_url;
+
+    concat_all_pages_len = snprintf (NULL, 0, "%s/all-pages", url);
+    concated_url = g_malloc 
+        (sizeof *concated_url * (concat_all_pages_len + 1));
+    snprintf (concated_url, concat_all_pages_len + 1,
+            "%s/all-pages", url);
+
+    const char *html_response = mg_util_soup_get_request (util_soup, concated_url,
+            &response_len);
+    return htmlReadMemory (html_response, response_len,
+            NULL, NULL,
+            HTML_PARSE_RECOVER | HTML_PARSE_NODEFDTD
+            | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING );
+
+}
+
+
 GListStore *
 mg_backend_readmng_get_featured_manga (MgBackendReadmng *self) {
     GListStore *mangas;
@@ -175,10 +243,10 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
     if (mg_manga_has_details (manga)) {
         goto cleanup_mg_backend_readmng_retrieve_manga_details;
     }
-    
+
     xml_utils = self->xml_utils;
     html_document = mg_backend_readmng_fetch_xml_details (self,
-        manga);
+            manga);
     xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
             html_document, "//li[@class]");
     node_set = xpath_result->nodesetval;
@@ -205,7 +273,7 @@ cleanup_mg_backend_readmng_retrieve_manga_details:
 static GListStore *
 mg_backend_readmng_recover_chapter_list (MgBackendReadmng *self,
         xmlDocPtr html_document_details) {
-        MgUtilXML *xml_utils = self->xml_utils;
+    MgUtilXML *xml_utils = self->xml_utils;
     xmlXPathObjectPtr xpath_result = NULL;
     xmlNodeSetPtr node_set = NULL;
     xmlNodePtr *uls = NULL;

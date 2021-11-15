@@ -160,3 +160,11 @@ mg_manga_chapter_get_title (MgMangaChapter *self) {
     g_object_get_property (G_OBJECT (self), "title", &value);
     return g_value_dup_string (&value);
 }
+
+char *
+mg_manga_chapter_get_url (MgMangaChapter *self) {
+    GValue value = G_VALUE_INIT;
+    g_value_init (&value, G_TYPE_STRING);
+    g_object_get_property (G_OBJECT (self), "url", &value);
+    return g_value_dup_string (&value);
+}

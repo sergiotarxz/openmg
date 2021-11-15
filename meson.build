@@ -12,6 +12,7 @@ openmgdeps = [
 ]
 
 sources = [
+    'src/view/chapter_view.c',
     'src/view/list_view_chapter.c',
     'src/view/picture.c',
     'src/util/gobject_utility_extensions.c',

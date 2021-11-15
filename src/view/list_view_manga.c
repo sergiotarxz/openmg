@@ -39,7 +39,7 @@ manga_selected (GtkListView *list_view,
                 ADW_NAVIGATION_DIRECTION_FORWARD);
     }
 
-    GtkBox *detail_view = create_detail_view (manga);
+    GtkBox *detail_view = create_detail_view (manga, views_leaflet);
     adw_leaflet_append (views_leaflet, GTK_WIDGET (detail_view));
     adw_leaflet_navigate (views_leaflet, ADW_NAVIGATION_DIRECTION_FORWARD);
 }

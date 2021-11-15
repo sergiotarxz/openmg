@@ -5,6 +5,7 @@
 #include <gio/gio.h>
 
 #include <openmg/manga.h>
+#include <openmg/chapter.h>
 
 G_BEGIN_DECLS;
 
@@ -32,5 +33,7 @@ mg_backend_readmng_get_featured_manga (MgBackendReadmng *self);
 void
 mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
         MgManga *manga);
+GListModel *
+mg_backend_readmng_get_chapter_images (MgBackendReadmng *self, MgMangaChapter *chapter);
 
 G_END_DECLS

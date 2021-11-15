@@ -12,5 +12,7 @@ mg_manga_chapter_new (const char *const title,
         const char *const url);
 char *
 mg_manga_chapter_get_title (MgMangaChapter *self);
+char *
+mg_manga_chapter_get_url (MgMangaChapter *self);
 
 G_END_DECLS

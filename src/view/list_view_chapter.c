@@ -4,14 +4,17 @@
 #include <openmg/chapter.h>
 #include <openmg/backend/readmng.h>
 #include <openmg/view/list_view_chapter.h>
+#include <openmg/view/chapter_view.h>
 
+static void
+activate_chapter (GtkListView *list_view, guint position, gpointer user_data);
 static void
 setup_list_view_chapter_list (GtkSignalListItemFactory *factory,
         GtkListItem *list_item,
         gpointer user_data);
 
 GtkListView *
-create_list_view_chapters (MgManga *manga) {
+create_list_view_chapters (MgManga *manga, AdwLeaflet *views_leaflet) {
     GListStore *manga_chapter_list = NULL;
     GtkListView *list_view_chapters = NULL;
     GtkSingleSelection *selection = NULL;
@@ -28,6 +31,9 @@ create_list_view_chapters (MgManga *manga) {
 
     list_view_chapters = GTK_LIST_VIEW (gtk_list_view_new (GTK_SELECTION_MODEL (selection),
                 factory));
+    gtk_list_view_set_single_click_activate (list_view_chapters, 1);
+    g_signal_connect (G_OBJECT (list_view_chapters), "activate",
+            G_CALLBACK (activate_chapter), views_leaflet);
 
     return list_view_chapters;
 }
@@ -46,4 +52,14 @@ setup_list_view_chapter_list (GtkSignalListItemFactory *factory,
     gtk_box_append (box, GTK_WIDGET (icon));
     gtk_box_append (box, GTK_WIDGET (title));
     gtk_list_item_set_child (list_item, GTK_WIDGET (box));
+}
+
+static void
+activate_chapter (GtkListView *list_view, guint position, gpointer user_data) {
+    GtkSingleSelection *selection = GTK_SINGLE_SELECTION
+        (gtk_list_view_get_model (list_view));
+    GListModel *chapters = gtk_single_selection_get_model (selection);
+    MgMangaChapter *chapter = MG_MANGA_CHAPTER (g_list_model_get_item (chapters, position));
+    AdwLeaflet *views_leaflet = ADW_LEAFLET (user_data);
+    setup_chapter_view (chapter, views_leaflet);
 }

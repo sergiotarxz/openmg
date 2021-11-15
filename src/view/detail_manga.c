@@ -48,7 +48,7 @@ toggle_folded (GtkButton *toggle_folded_button,
 }
 
 GtkBox *
-create_detail_view (MgManga *manga) {
+create_detail_view (MgManga *manga, AdwLeaflet *views_leaflet) {
     MgBackendReadmng *readmng = mg_backend_readmng_new ();
     GtkWidget *scroll;
     GtkBox *detail_view = GTK_BOX (gtk_box_new (GTK_ORIENTATION_VERTICAL, 0));
@@ -73,7 +73,7 @@ create_detail_view (MgManga *manga) {
     g_object_set_property_int (G_OBJECT (scroll), "vexpand", 1);
 
     mg_backend_readmng_retrieve_manga_details (readmng, manga);
-    chapter_list = create_list_view_chapters (manga);
+    chapter_list = create_list_view_chapters (manga, views_leaflet);
 
     
     g_signal_connect (G_OBJECT (toggle_folded_button), "clicked", G_CALLBACK (toggle_folded), foldable_manga_data);
