@@ -108,5 +108,6 @@ create_detail_view (MgManga *manga, AdwLeaflet *views_leaflet) {
     g_free (manga_title_text);
     g_free (title_text);
     g_free (description_text);
+    g_clear_object (&xml_util);
     return detail_view;
 }

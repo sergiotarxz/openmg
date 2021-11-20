@@ -57,6 +57,8 @@ mg_util_xml_find_class (MgUtilXML *self, xmlNodePtr node, char *class,
                 }
             }
         }
+        g_free (attr);
+        attr = NULL;
     }
 cleanup_mg_util_xml_find_class:
     if (attr) {

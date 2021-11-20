@@ -267,7 +267,9 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
     mg_manga_set_chapter_list (manga, manga_chapters);
     mg_manga_details_recovered (manga);
 cleanup_mg_backend_readmng_retrieve_manga_details:
-    g_free (movie_detail);
+    if (movie_detail) {
+        g_free (movie_detail);
+    }
 }
 
 static GListStore *
@@ -369,10 +371,12 @@ mg_backend_readmng_fetch_xml_details (MgBackendReadmng *self,
     request_url_len = snprintf ( NULL, 0, "%s/%s/", self->base_url, manga_id);
     request_url = mg_util_string_alloc_string (string_util, request_url_len); 
     snprintf ( request_url, request_url_len+1, "%s/%s/", self->base_url, manga_id);
+    g_free (manga_id);
 
     char *html_response = mg_util_soup_get_request (util_soup,
             request_url, &response_len);
-    g_object_unref (util_soup);
+    g_clear_object (&util_soup);
+    g_clear_object (&string_util);
     return htmlReadMemory (html_response, response_len, NULL, NULL,
             HTML_PARSE_RECOVER | HTML_PARSE_NODEFDTD
             | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING );
@@ -475,7 +479,9 @@ mg_backend_readmng_retrieve_slides (MgBackendReadmng *self, const xmlDocPtr html
         xmlXPathFreeObject(xpath_result);
     }
 cleanup_mg_backend_readmng_retrieve_slides:
-    g_free (nodes);
+    if (nodes) {
+        g_free (nodes);
+    }
     return slides;
 }
 
@@ -483,10 +489,16 @@ static xmlNodePtr
 mg_backend_readmng_retrieve_thumbnail_from_li (MgBackendReadmng *self, xmlNodePtr current_li) {
     size_t thumbnail_len = 0;
     MgUtilXML *xml_utils = self->xml_utils;
+    xmlNodePtr return_value = NULL;
     xmlNodePtr *thumbnail = mg_util_xml_find_class (xml_utils, current_li, "thumbnail",
             &thumbnail_len, NULL, 1);
-    if (thumbnail_len) return thumbnail[0];
-    return NULL;
+    if (!thumbnail_len) goto cleanup_mg_backend_retrieve_thumbnail_from_li;
+    return_value = thumbnail[0];
+cleanup_mg_backend_retrieve_thumbnail_from_li:
+    if (thumbnail) {
+        g_free (thumbnail);
+    }
+    return return_value;
 }
 
 static xmlNodePtr
@@ -534,6 +546,13 @@ mg_backend_readmng_extract_manga_info_from_current_li (MgBackendReadmng *self,
         g_list_store_append (mangas,
                 mg_manga_new (mg_util_xml_get_attr (xml_utils, img, "src"),
                     (char *)xmlNodeGetContent (title), id_manga));
+    }
+
+    if (thumbnail) {
+        xmlFreeNode (thumbnail);
+    }
+    if (title) {
+        xmlFreeNode (title);
     }
 }
 

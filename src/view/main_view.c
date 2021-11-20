@@ -87,12 +87,10 @@ int
 main_view_run (int argc,
         char **argv)
 {
-    AdwApplication *app;
-    int status;
-
-    app = adw_application_new ("org.mangareader", G_APPLICATION_FLAGS_NONE);
+    AdwApplication *app = adw_application_new ("me.sergiotarxz.mangareader", G_APPLICATION_FLAGS_NONE);
+    int status = 0;
     g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
     status = g_application_run (G_APPLICATION (app), argc, argv);
-    g_object_unref (app);
+    g_clear_object (&app);
     return status;
 }

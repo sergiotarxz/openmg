@@ -35,5 +35,6 @@ create_picture_from_url (char *url, gint picture_height) {
 
 cleanup_create_picture_from_url:
     g_free (downloaded_image);
+    g_clear_object (&util_soup);
     return picture;
 }

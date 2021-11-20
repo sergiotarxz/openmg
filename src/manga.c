@@ -99,31 +99,40 @@ mg_manga_details_recovered (MgManga *self) {
 char *
 mg_manga_get_id (MgManga *self) {
     GValue value = G_VALUE_INIT;
+    char *return_value = NULL;
     g_value_init (&value, G_TYPE_STRING);
     g_object_get_property (G_OBJECT (self),
             "id",
             &value);
-    return g_value_dup_string (&value);
+    return_value = g_value_dup_string (&value);
+    g_value_unset (&value);
+    return return_value;
 }
 
 char *
 mg_manga_get_image_url (MgManga *self) {
     GValue value = G_VALUE_INIT;
+    char *return_value = NULL;
     g_value_init (&value, G_TYPE_STRING);
     g_object_get_property (G_OBJECT (self),
             "image_url",
             &value);
-    return g_value_dup_string (&value);
+    return_value = g_value_dup_string (&value);
+    g_value_unset (&value);
+    return return_value;
 }
 
 char *
 mg_manga_get_title (MgManga *self) {
     GValue value = G_VALUE_INIT;
+    char *return_value = NULL;
     g_value_init (&value, G_TYPE_STRING);
     g_object_get_property (G_OBJECT (self),
             "title",
             &value);
-    return g_value_dup_string (&value);
+    return_value = g_value_dup_string (&value);
+    g_value_unset (&value);
+    return return_value;
 }
 
 char *
