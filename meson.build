@@ -28,10 +28,15 @@ sources = [
     'src/backend/readmng.c',
     'src/main.c',
 ]
+
+link_arguments = [
+    '-ldl'
+]
                         
 executable('openmg',
     sources,
     dependencies : openmgdeps,
     include_directories : inc,
-    install : true
+    install : true,
+    link_args : link_arguments
 )

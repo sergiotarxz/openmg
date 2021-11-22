@@ -1,3 +1,5 @@
+#include <dlfcn.h>
+
 #include <gtk/gtk.h>
 #include <adwaita.h>
 
@@ -26,7 +28,14 @@ activate (AdwApplication *app,
     GtkListView *list_view;
     GtkWidget *scroll;
     AdwLeaflet *views_leaflet = ADW_LEAFLET (adw_leaflet_new ());
-    adw_leaflet_set_can_swipe_back (views_leaflet, 1);
+    typedef void (*swipe_back_t)(AdwLeaflet *, gboolean);
+    swipe_back_t swipe_back = (swipe_back_t) dlsym
+        (NULL, "adw_leaflet_set_can_navigate_back");
+    if (!swipe_back) {
+        swipe_back = (swipe_back_t) dlsym
+        (NULL, "adw_leaflet_set_can_swipe_back");
+    }
+    swipe_back (views_leaflet, 1);
 
     create_headerbar (box, views_leaflet);
 
@@ -37,7 +46,7 @@ activate (AdwApplication *app,
     gtk_widget_set_valign (scroll, GTK_ALIGN_FILL);
     gtk_widget_set_vexpand (scroll, 1);
     gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll), GTK_WIDGET (list_view));
-    
+
     adw_leaflet_append (views_leaflet, scroll);
     adw_leaflet_set_can_unfold (views_leaflet, false);
 
@@ -73,7 +82,7 @@ create_headerbar (GtkBox *box, AdwLeaflet *views_leaflet) {
             views_leaflet);
 
     adw_header_bar_pack_start (ADW_HEADER_BAR (header), previous);
- 
+
 
     return ADW_HEADER_BAR (header);
 }
