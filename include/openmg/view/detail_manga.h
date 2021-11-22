@@ -3,5 +3,7 @@
 
 #include <openmg/manga.h>
 
+#include <openmg/view/controls.h>
+
 GtkBox *
-create_detail_view (MgManga *manga, AdwLeaflet *views_leaflet);
+create_detail_view (MgManga *manga, ControlsAdwaita *controls);

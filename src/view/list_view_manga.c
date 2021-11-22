@@ -9,6 +9,7 @@
 #include <openmg/view/detail_manga.h>
 #include <openmg/view/list_view_manga.h>
 #include <openmg/view/picture.h>
+#include <openmg/view/controls.h>
 
 typedef struct {
     GtkListView *list_view;
@@ -24,7 +25,8 @@ static void
 manga_selected (GtkListView *list_view, 
         guint position,
         gpointer user_data) {
-    AdwLeaflet *views_leaflet = ADW_LEAFLET (user_data);
+    ControlsAdwaita *controls = (ControlsAdwaita *) user_data;
+    AdwLeaflet *views_leaflet = controls->views_leaflet;
     GtkSingleSelection *selection = GTK_SINGLE_SELECTION 
         (gtk_list_view_get_model (list_view));
     GListModel *mangas = gtk_single_selection_get_model (selection);
@@ -39,7 +41,7 @@ manga_selected (GtkListView *list_view,
                 ADW_NAVIGATION_DIRECTION_FORWARD);
     }
 
-    GtkBox *detail_view = create_detail_view (manga, views_leaflet);
+    GtkBox *detail_view = create_detail_view (manga, controls);
     adw_leaflet_append (views_leaflet, GTK_WIDGET (detail_view));
     adw_leaflet_navigate (views_leaflet, ADW_NAVIGATION_DIRECTION_FORWARD);
 }
@@ -66,7 +68,8 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
 }
 
 GtkListView *
-create_list_view_mangas (GListStore *mangas, AdwLeaflet *views_leaflet) {
+create_list_view_mangas (GListStore *mangas, ControlsAdwaita *controls) {
+    AdwLeaflet *views_leaflet = controls->views_leaflet;
     GtkSingleSelection *selection = gtk_single_selection_new (G_LIST_MODEL (mangas));
     GtkListItemFactory *factory = gtk_signal_list_item_factory_new ();
     GtkListView *list_view_manga = NULL;
@@ -80,7 +83,8 @@ create_list_view_mangas (GListStore *mangas, AdwLeaflet *views_leaflet) {
     g_object_set_property_int (G_OBJECT (list_view_manga),
             "single-click-activate", 1);
 
+
     g_signal_connect (G_OBJECT (list_view_manga), "activate",
-            G_CALLBACK (manga_selected), views_leaflet);
+            G_CALLBACK (manga_selected), controls);
     return list_view_manga;
 }

@@ -13,6 +13,18 @@
 #include <openmg/view/detail_manga.h>
 #include <openmg/view/list_view_chapter.h>
 
+typedef struct {
+    GtkWidget *reorder;
+    GtkWidget *hide_description;
+    AdwHeaderBar *header;
+} HeaderButtons;
+static void
+hide_controls (GtkWidget *detail_view,
+        gpointer user_data);
+static void
+show_controls (GtkWidget *detail_view,
+        gpointer user_data);
+
 static void
 reverse_list (GtkButton *reverse_button,
         gpointer user_data) {
@@ -48,7 +60,9 @@ toggle_folded (GtkButton *toggle_folded_button,
 }
 
 GtkBox *
-create_detail_view (MgManga *manga, AdwLeaflet *views_leaflet) {
+create_detail_view (MgManga *manga, ControlsAdwaita *controls) {
+    AdwLeaflet *views_leaflet = controls->views_leaflet;
+    AdwHeaderBar *header = controls->header;
     MgBackendReadmng *readmng = mg_backend_readmng_new ();
     GtkWidget *scroll;
     GtkBox *detail_view = GTK_BOX (gtk_box_new (GTK_ORIENTATION_VERTICAL, 0));
@@ -68,6 +82,7 @@ create_detail_view (MgManga *manga, AdwLeaflet *views_leaflet) {
     char *title_text = mg_util_xml_get_title_text (
             xml_util, manga_title_text);
     char *description_text;
+    HeaderButtons *buttons = g_malloc (sizeof *buttons);
 
     scroll = gtk_scrolled_window_new ();
     g_object_set_property_int (G_OBJECT (scroll), "vexpand", 1);
@@ -100,15 +115,43 @@ create_detail_view (MgManga *manga, AdwLeaflet *views_leaflet) {
     gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll), GTK_WIDGET (chapter_list));
     gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
 
-    gtk_box_append (detail_view, GTK_WIDGET (toggle_folded_button));
     gtk_box_append (detail_view, scroll);
-    gtk_box_append (detail_view, GTK_WIDGET (reverse_list_button));
 
-    g_clear_object (&readmng);
+    buttons->header = header;
+    buttons->hide_description = GTK_WIDGET (toggle_folded_button);
+    buttons->reorder = GTK_WIDGET (reverse_list_button);
+
+    g_object_ref (G_OBJECT (reverse_list_button));
+    g_object_ref (G_OBJECT (toggle_folded_button));
+
+    g_signal_connect (detail_view, "map", G_CALLBACK (show_controls),
+        buttons);
+    g_signal_connect (detail_view, "unmap", G_CALLBACK (hide_controls),
+        buttons);
+
+       g_clear_object (&readmng);
     g_free (url_image);
     g_free (manga_title_text);
     g_free (title_text);
     g_free (description_text);
     g_clear_object (&xml_util);
     return detail_view;
+}
+
+static void
+hide_controls (GtkWidget *detail_view,
+        gpointer user_data) {
+    HeaderButtons *buttons = (HeaderButtons *) user_data;
+    AdwHeaderBar *header = buttons->header;
+    adw_header_bar_remove (header, GTK_WIDGET (buttons->hide_description));
+    adw_header_bar_remove (header, GTK_WIDGET (buttons->reorder));
+}
+
+static void
+show_controls (GtkWidget *detail_view,
+        gpointer user_data) {
+    HeaderButtons *buttons = (HeaderButtons *) user_data;
+    AdwHeaderBar *header = buttons->header;
+    adw_header_bar_pack_end (header, GTK_WIDGET (buttons->hide_description));
+    adw_header_bar_pack_end (header, GTK_WIDGET (buttons->reorder));
 }

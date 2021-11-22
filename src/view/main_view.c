@@ -28,19 +28,25 @@ activate (AdwApplication *app,
     GtkListView *list_view;
     GtkWidget *scroll;
     AdwLeaflet *views_leaflet = ADW_LEAFLET (adw_leaflet_new ());
+    ControlsAdwaita *controls = g_malloc (sizeof *controls);
+
     typedef void (*swipe_back_t)(AdwLeaflet *, gboolean);
     swipe_back_t swipe_back = (swipe_back_t) dlsym
         (NULL, "adw_leaflet_set_can_navigate_back");
+
+
     if (!swipe_back) {
         swipe_back = (swipe_back_t) dlsym
         (NULL, "adw_leaflet_set_can_swipe_back");
     }
     swipe_back (views_leaflet, 1);
 
-    create_headerbar (box, views_leaflet);
+    AdwHeaderBar *header_bar = create_headerbar (box, views_leaflet);
+    controls->header = header_bar;
+    controls->views_leaflet = views_leaflet;
 
     mangas = mg_backend_readmng_get_featured_manga (readmng);
-    list_view = create_list_view_mangas (mangas, views_leaflet);
+    list_view = create_list_view_mangas (mangas, controls);
     scroll = gtk_scrolled_window_new ();
 
     gtk_widget_set_valign (scroll, GTK_ALIGN_FILL);
