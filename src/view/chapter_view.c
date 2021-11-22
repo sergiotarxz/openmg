@@ -138,7 +138,7 @@ set_image_zoomable_picture_container (ChapterVisorData *chapter_visor_data) {
             strlen (url_image_not_owned));
 
     current_picture = create_picture_from_url
-        (url_image, -1);
+        (url_image, 0);
     chapter_visor_data->current_picture = current_picture;
     g_signal_connect (G_OBJECT (current_picture), "map",
             G_CALLBACK (image_page_show), views_leaflet);

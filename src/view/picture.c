@@ -42,7 +42,6 @@ create_picture_from_url (const char *const url, gint picture_size) {
     picture = GTK_PICTURE (gtk_picture_new_for_paintable (GDK_PAINTABLE (texture)));
     g_object_set_property_int (G_OBJECT(picture), "height-request", picture_size);
     g_object_set_property_int (G_OBJECT(picture), "width-request", picture_size);
-    g_object_set_property_int (G_OBJECT(picture), "margin-end", 5);
 
 cleanup_create_picture_from_url:
     g_free (downloaded_image);

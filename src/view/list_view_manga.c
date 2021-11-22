@@ -56,6 +56,7 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
     GtkWidget *label = gtk_label_new (manga_title);
     GtkWidget *picture = GTK_WIDGET (
             create_picture_from_url (image_url, 100));
+    g_object_set_property_int (G_OBJECT(picture), "margin-end", 5);
 
     gtk_box_append (box, picture);
     gtk_box_append (box, label);
