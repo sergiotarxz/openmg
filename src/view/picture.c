@@ -6,11 +6,14 @@
 #include <openmg/util/gobject_utility_extensions.h>
 
 GtkPicture *
-create_picture_from_url (char *url, gint picture_height) {
+create_picture_from_url (const char *const url, gint picture_size) {
     GtkPicture *picture = NULL;
     GFileIOStream *iostream;
     GFile *tmp_image;
     GError *error = NULL;
+    GdkTexture *texture;
+
+    printf("%s\n", url);
 
     size_t size_downloaded_image = 0;
     char *downloaded_image;
@@ -31,8 +34,15 @@ create_picture_from_url (char *url, gint picture_height) {
         g_clear_error (&error);
         goto cleanup_create_picture_from_url;
     }
-    picture = GTK_PICTURE (gtk_picture_new_for_file (tmp_image));
-    g_object_set_property_int (G_OBJECT(picture), "height-request", picture_height);
+    texture = gdk_texture_new_from_file (tmp_image, &error);
+    if (error) {
+        fprintf (stderr, "Texture malformed.");
+        goto cleanup_create_picture_from_url;
+    }
+    picture = GTK_PICTURE (gtk_picture_new_for_paintable (GDK_PAINTABLE (texture)));
+    g_object_set_property_int (G_OBJECT(picture), "height-request", picture_size);
+    g_object_set_property_int (G_OBJECT(picture), "width-request", picture_size);
+    g_object_set_property_int (G_OBJECT(picture), "margin-end", 5);
 
 cleanup_create_picture_from_url:
     g_free (downloaded_image);
