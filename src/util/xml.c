@@ -86,6 +86,7 @@ mg_util_xml_get_attr (MgUtilXML *self, xmlNodePtr const node, const char *attr_n
             break;
         }
     }
+    g_clear_object (&string_util);
     return return_value;
 }
 
@@ -120,6 +121,7 @@ mg_util_xml_has_class (MgUtilXML *self,
 
 cleanup_has_class:
     mg_util_regex_splitted_string_free (regex_util, classes);
+    g_clear_object (&regex_util);
     return return_value;
 }
 
@@ -161,6 +163,7 @@ mg_util_xml_get_title_text (MgUtilXML *self,
     xmlNodePtr text_content = NULL;
     xmlDocSetRootElement (document, root_node);
     char *size_text = NULL;
+    char *result;
     size_text = g_malloc (sizeof *size_text * 2000);
 
     text_content = xmlNewText ((xmlChar *) text);
@@ -168,7 +171,12 @@ mg_util_xml_get_title_text (MgUtilXML *self,
     snprintf (size_text, 2000, "%d", 30 * PANGO_SCALE);
     xmlNewProp (root_node, (xmlChar *) "size", (xmlChar *) size_text);
 
-    return mg_util_xml_get_as_char_node (self, root_node, document);
+    result = mg_util_xml_get_as_char_node (self, root_node, document);
+
+    g_free (size_text);
+    xmlFreeDoc (document);
+
+    return result;
 }
 
 static char *

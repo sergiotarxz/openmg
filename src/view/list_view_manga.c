@@ -51,15 +51,17 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
     MgManga *manga = gtk_list_item_get_item (list_item);
     GtkBox *box = GTK_BOX (gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0));
     char *manga_title = mg_manga_get_title (manga);
+    char *image_url = mg_manga_get_image_url (manga);
 
     GtkWidget *label = gtk_label_new (manga_title);
     GtkWidget *picture = GTK_WIDGET (
-            create_picture_from_url (mg_manga_get_image_url(manga), 200));
+            create_picture_from_url (image_url, 200));
 
     gtk_box_append (box, picture);
     gtk_box_append (box, label);
     gtk_list_item_set_child (list_item, GTK_WIDGET (box));
     g_free (manga_title);
+    g_free (image_url);
 }
 
 GtkListView *

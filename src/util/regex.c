@@ -125,6 +125,7 @@ mg_util_regex_iterate_string_to_split (MgUtilRegex *self,
     *offset += 1;
 
 cleanup_iterate_string_to_split:
+    g_clear_object (&string_util);
     pcre2_match_data_free (match_data);
 }
 

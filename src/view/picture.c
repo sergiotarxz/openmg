@@ -21,13 +21,14 @@ create_picture_from_url (char *url, gint picture_height) {
     tmp_image = g_file_new_tmp ("mangareadertmpfileXXXXXX", &iostream, &error);
     if (error) {
         fprintf (stderr, "Unable to read file: %s\n", error->message);
+        g_clear_error (&error);
         goto cleanup_create_picture_from_url;
     }
-    error = NULL;
     g_output_stream_write (g_io_stream_get_output_stream (G_IO_STREAM (iostream)),
             downloaded_image, size_downloaded_image, NULL, &error);
     if (error) {
         fprintf (stderr, "Unable to write file: %s\n", error->message);
+        g_clear_error (&error);
         goto cleanup_create_picture_from_url;
     }
     picture = GTK_PICTURE (gtk_picture_new_for_file (tmp_image));
@@ -36,5 +37,7 @@ create_picture_from_url (char *url, gint picture_height) {
 cleanup_create_picture_from_url:
     g_free (downloaded_image);
     g_clear_object (&util_soup);
+    g_clear_object (&iostream);
+    g_clear_object (&tmp_image);
     return picture;
 }

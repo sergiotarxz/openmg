@@ -67,6 +67,7 @@ mg_manga_chapter_new (const char *const title,
             strlen(published_text) + 1, 0,
             strlen (published_text));
 
+    g_clear_object (&string_util);
     return self;
 }
 
@@ -156,15 +157,21 @@ mg_manga_chapter_set_property (GObject *object,
 char *
 mg_manga_chapter_get_title (MgMangaChapter *self) {
     GValue value = G_VALUE_INIT;
+    char *return_value = NULL;
     g_value_init (&value, G_TYPE_STRING);
     g_object_get_property (G_OBJECT (self), "title", &value);
-    return g_value_dup_string (&value);
+    return_value = g_value_dup_string (&value);
+    g_value_unset (&value);
+    return return_value;
 }
 
 char *
 mg_manga_chapter_get_url (MgMangaChapter *self) {
     GValue value = G_VALUE_INIT;
+    char *return_value = NULL;
     g_value_init (&value, G_TYPE_STRING);
     g_object_get_property (G_OBJECT (self), "url", &value);
-    return g_value_dup_string (&value);
+    return_value = g_value_dup_string (&value);
+    g_value_unset (&value);
+    return return_value;
 }

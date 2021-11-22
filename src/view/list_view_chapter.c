@@ -44,8 +44,8 @@ setup_list_view_chapter_list (GtkSignalListItemFactory *factory,
         gpointer user_data) {
     MgMangaChapter *manga_chapter = gtk_list_item_get_item (list_item);
     GtkBox *box = GTK_BOX (gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0));
-    g_object_ref (G_OBJECT (box));
-    GtkLabel *title = GTK_LABEL (gtk_label_new (mg_manga_chapter_get_title (manga_chapter)));
+    char *title_string = mg_manga_chapter_get_title (manga_chapter);
+    GtkLabel *title = GTK_LABEL (gtk_label_new (title_string));
     GtkImage *icon = GTK_IMAGE (gtk_image_new_from_icon_name (
             "weather-clear-night-symbolic"));
     gtk_image_set_icon_size (icon, GTK_ICON_SIZE_LARGE);
@@ -53,6 +53,8 @@ setup_list_view_chapter_list (GtkSignalListItemFactory *factory,
     gtk_box_append (box, GTK_WIDGET (icon));
     gtk_box_append (box, GTK_WIDGET (title));
     gtk_list_item_set_child (list_item, GTK_WIDGET (box));
+
+    g_free (title_string);
 }
 
 static void

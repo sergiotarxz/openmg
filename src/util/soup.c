@@ -48,8 +48,8 @@ mg_util_soup_get_request (MgUtilSoup *self, const char *url, gsize *size_respons
     char *return_value = mg_util_soup_copy_binary_data(self, html_response, *size_response_text);
 
     g_value_unset (&response);
-    g_object_unref (soup_session);
-    g_object_unref (msg);
+    g_clear_object (&soup_session);
+    g_clear_object (&msg);
 
     return return_value;
 }

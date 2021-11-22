@@ -80,6 +80,8 @@ setup_chapter_view (MgMangaChapter *chapter, AdwLeaflet *views_leaflet) {
     add_controls_overlay (overlay, chapter_visor_data);
     gtk_box_append (chapter_view_container, GTK_WIDGET (overlay));
     append_chapter_view_leaflet (views_leaflet, chapter_view_container);
+
+    g_clear_object (&readmng);
 }
 
 static void
@@ -141,6 +143,9 @@ set_image_zoomable_picture_container (ChapterVisorData *chapter_visor_data) {
     g_signal_connect (G_OBJECT (current_picture), "map",
             G_CALLBACK (image_page_show), views_leaflet);
     gtk_scrolled_window_set_child (zoomable_picture_container, GTK_WIDGET (current_picture));
+
+    g_free (url_image);
+    g_clear_object (&string_util);
 }
 
 static void

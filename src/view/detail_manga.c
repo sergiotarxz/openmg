@@ -29,7 +29,7 @@ reverse_list (GtkButton *reverse_button,
     GtkSingleSelection *new_selection = gtk_single_selection_new
             (G_LIST_MODEL (new_model));
     gtk_list_view_set_model (list_view, GTK_SELECTION_MODEL (new_selection));
-    g_object_unref (G_OBJECT (model));
+    g_clear_object (&model);
 }
 
 static void
@@ -62,8 +62,8 @@ create_detail_view (MgManga *manga, AdwLeaflet *views_leaflet) {
     GtkButton *reverse_list_button = GTK_BUTTON (gtk_button_new_from_icon_name
             ("network-transmit-receive-symbolic"));
     GtkListView *chapter_list = NULL;
-    GtkPicture *manga_image = create_picture_from_url (
-            mg_manga_get_image_url(manga), 200);
+    char *url_image =  mg_manga_get_image_url(manga);
+    GtkPicture *manga_image = create_picture_from_url (url_image, 200);
     char *manga_title_text = mg_manga_get_title (manga);
     char *title_text = mg_util_xml_get_title_text (
             xml_util, manga_title_text);
@@ -105,6 +105,7 @@ create_detail_view (MgManga *manga, AdwLeaflet *views_leaflet) {
     gtk_box_append (detail_view, GTK_WIDGET (reverse_list_button));
 
     g_clear_object (&readmng);
+    g_free (url_image);
     g_free (manga_title_text);
     g_free (title_text);
     g_free (description_text);
