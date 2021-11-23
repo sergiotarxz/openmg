@@ -13,8 +13,6 @@ create_picture_from_url (const char *const url, gint picture_size) {
     GError *error = NULL;
     GdkTexture *texture;
 
-    printf("%s\n", url);
-
     size_t size_downloaded_image = 0;
     char *downloaded_image;
 

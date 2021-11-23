@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 
@@ -19,6 +21,7 @@ typedef struct {
     GtkPicture *current_picture;
     AdwLeaflet *views_leaflet;
     GtkScrolledWindow *zoomable_picture_container;
+    double zoom;
 } ChapterVisorData;
 
 static void
@@ -38,24 +41,40 @@ go_prev (GtkButton *prev,
 static void
 go_next (GtkButton *next,
         gpointer user_data);
+static void
+set_image_dimensions (GtkWidget *picture,
+        ChapterVisorData *chapter_visor_data);
 
 static void
 image_page_show (GtkWidget *picture, gpointer user_data) {
-    GtkWidget *views_leaflet = GTK_WIDGET (user_data);
-    GdkPaintable *paintable = gtk_picture_get_paintable (GTK_PICTURE (picture));
+    ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
+
+    chapter_visor_data->zoom = 1;
+    set_image_dimensions (picture, chapter_visor_data);
+}
+
+static void
+set_image_dimensions (GtkWidget *picture,
+        ChapterVisorData *chapter_visor_data) {
     double final_width = 0;
     double final_height = 0;
+    GdkPaintable *paintable = gtk_picture_get_paintable (GTK_PICTURE (picture));
+    GtkWidget *views_leaflet = GTK_WIDGET (chapter_visor_data->views_leaflet);
     guint width = gtk_widget_get_allocated_width
-            (views_leaflet);
+            (views_leaflet) * chapter_visor_data->zoom;
     gdk_paintable_compute_concrete_size (
-                paintable,
-                width,
-                0,
-                gdk_paintable_get_intrinsic_width (paintable),
-                gdk_paintable_get_intrinsic_height (paintable),
-                &final_width,
-                &final_height
-            );
+            paintable,
+            width,
+            0,
+            gdk_paintable_get_intrinsic_width (paintable),
+            gdk_paintable_get_intrinsic_height (paintable),
+            &final_width,
+            &final_height
+    );
+    g_object_set_property_int (G_OBJECT (picture),
+            "width-request", (int) final_width);
+    g_object_set_property_int (G_OBJECT (picture),
+            "height-request", (int) final_height);
     g_object_set_property_int (G_OBJECT (picture),
             "width-request", (int) final_width);
     g_object_set_property_int (G_OBJECT (picture),
@@ -129,7 +148,6 @@ set_image_zoomable_picture_container (ChapterVisorData *chapter_visor_data) {
     GtkPicture *current_picture;
     GListModel *pages = chapter_visor_data->pages;
     guint current_page = chapter_visor_data->current_page;
-    AdwLeaflet *views_leaflet = chapter_visor_data->views_leaflet;
     const char *url_image_not_owned =
         gtk_string_list_get_string (GTK_STRING_LIST 
                 (pages), current_page);
@@ -143,7 +161,7 @@ set_image_zoomable_picture_container (ChapterVisorData *chapter_visor_data) {
         (url_image, 0);
     chapter_visor_data->current_picture = current_picture;
     g_signal_connect (G_OBJECT (current_picture), "map",
-            G_CALLBACK (image_page_show), views_leaflet);
+            G_CALLBACK (image_page_show), chapter_visor_data);
     gtk_scrolled_window_set_child (zoomable_picture_container, GTK_WIDGET (current_picture));
 
     g_free (url_image);
@@ -181,5 +199,9 @@ static void
 fire_zoom (GtkGestureZoom *zoom,
         gdouble scale,
         gpointer user_data) {
-    printf("%0.2f", scale);
+    ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
+    gdouble scale_factor = log (scale) / 10 + log (chapter_visor_data->zoom);
+    chapter_visor_data->zoom = pow (M_E, scale_factor);
+    set_image_dimensions (GTK_WIDGET (chapter_visor_data->current_picture),
+            chapter_visor_data);
 }
