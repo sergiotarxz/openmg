@@ -66,7 +66,7 @@ set_image_dimensions (GtkWidget *picture,
     double final_height = 0;
     GdkPaintable *paintable = gtk_picture_get_paintable (GTK_PICTURE (picture));
     GtkWidget *views_leaflet = GTK_WIDGET (chapter_visor_data->views_leaflet);
-    gdouble scale_factor = log (scale) / 10 + log (chapter_visor_data->zoom);
+    gdouble scale_factor = log (scale) / 20 + log (chapter_visor_data->zoom);
     chapter_visor_data->zoom = pow (M_E, scale_factor);
     guint width = gtk_widget_get_allocated_width
             (views_leaflet) * chapter_visor_data->zoom;
@@ -220,6 +220,6 @@ zoom_end (GtkGesture *zoom,
     ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
     gdouble scale = gtk_gesture_zoom_get_scale_delta
             (GTK_GESTURE_ZOOM (zoom));
-    gdouble scale_factor = log (scale) / 10 + log (chapter_visor_data->zoom);
+    gdouble scale_factor = log (scale) / 20 + log (chapter_visor_data->zoom);
     chapter_visor_data->zoom = pow (M_E, scale_factor);
 }
