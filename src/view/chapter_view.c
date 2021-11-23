@@ -43,23 +43,31 @@ go_next (GtkButton *next,
         gpointer user_data);
 static void
 set_image_dimensions (GtkWidget *picture,
-        ChapterVisorData *chapter_visor_data);
-
+        ChapterVisorData *chapter_visor_data,
+        gdouble scale);
+static void
+zoom_end (GtkGesture *zoom,
+        GdkEventSequence *sequence,
+        gpointer user_data);
+ 
 static void
 image_page_show (GtkWidget *picture, gpointer user_data) {
     ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
 
     chapter_visor_data->zoom = 1;
-    set_image_dimensions (picture, chapter_visor_data);
+    set_image_dimensions (picture, chapter_visor_data, 1);
 }
 
 static void
 set_image_dimensions (GtkWidget *picture,
-        ChapterVisorData *chapter_visor_data) {
+        ChapterVisorData *chapter_visor_data,
+        gdouble scale) {
     double final_width = 0;
     double final_height = 0;
     GdkPaintable *paintable = gtk_picture_get_paintable (GTK_PICTURE (picture));
     GtkWidget *views_leaflet = GTK_WIDGET (chapter_visor_data->views_leaflet);
+    gdouble scale_factor = log (scale) / 10 + log (chapter_visor_data->zoom);
+    chapter_visor_data->zoom = pow (M_E, scale_factor);
     guint width = gtk_widget_get_allocated_width
             (views_leaflet) * chapter_visor_data->zoom;
     gdk_paintable_compute_concrete_size (
@@ -178,6 +186,7 @@ set_zoomable_picture_container_properties (
     gtk_widget_add_controller (GTK_WIDGET (zoomable_picture_container),
             GTK_EVENT_CONTROLLER (zoom_controller));
     g_signal_connect (G_OBJECT (zoom_controller), "scale-changed", G_CALLBACK (fire_zoom), chapter_visor_data);
+    g_signal_connect (G_OBJECT (zoom_controller), "end", G_CALLBACK (zoom_end), chapter_visor_data);
 }
 
 
@@ -200,8 +209,17 @@ fire_zoom (GtkGestureZoom *zoom,
         gdouble scale,
         gpointer user_data) {
     ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
+    set_image_dimensions (GTK_WIDGET (chapter_visor_data->current_picture),
+            chapter_visor_data, scale);
+}
+
+static void
+zoom_end (GtkGesture *zoom,
+        GdkEventSequence *sequence,
+        gpointer user_data) {
+    ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
+    gdouble scale = gtk_gesture_zoom_get_scale_delta
+            (GTK_GESTURE_ZOOM (zoom));
     gdouble scale_factor = log (scale) / 10 + log (chapter_visor_data->zoom);
     chapter_visor_data->zoom = pow (M_E, scale_factor);
-    set_image_dimensions (GTK_WIDGET (chapter_visor_data->current_picture),
-            chapter_visor_data);
 }
