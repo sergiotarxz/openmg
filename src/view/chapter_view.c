@@ -25,7 +25,8 @@ static void
 set_image_zoomable_picture_container (ChapterVisorData *chapter_visor_data);
 static void
 set_zoomable_picture_container_properties (
-        GtkScrolledWindow *zoomable_picture_container);
+        GtkScrolledWindow *zoomable_picture_container,
+        ChapterVisorData *chapter_visor_data);
 static void
 append_chapter_view_leaflet (AdwLeaflet *views_leaflet,
         GtkBox *chapter_view_container);
@@ -73,7 +74,8 @@ setup_chapter_view (MgMangaChapter *chapter, AdwLeaflet *views_leaflet) {
     chapter_visor_data->pages = pages;
     chapter_visor_data->views_leaflet = views_leaflet;
     chapter_visor_data->zoomable_picture_container = zoomable_picture_container;
-    set_zoomable_picture_container_properties (zoomable_picture_container);
+    set_zoomable_picture_container_properties (zoomable_picture_container,
+        chapter_visor_data);
     set_image_zoomable_picture_container (chapter_visor_data);
 
     gtk_overlay_set_child (overlay, GTK_WIDGET (zoomable_picture_container));
@@ -150,13 +152,14 @@ set_image_zoomable_picture_container (ChapterVisorData *chapter_visor_data) {
 
 static void
 set_zoomable_picture_container_properties (
-        GtkScrolledWindow *zoomable_picture_container) {
+        GtkScrolledWindow *zoomable_picture_container,
+        ChapterVisorData *chapter_visor_data) {
     GtkGesture *zoom_controller = gtk_gesture_zoom_new ();
     g_object_set_property_int (G_OBJECT (zoomable_picture_container), "hexpand", 1);
     g_object_set_property_int (G_OBJECT (zoomable_picture_container), "vexpand", 1);
     gtk_widget_add_controller (GTK_WIDGET (zoomable_picture_container),
             GTK_EVENT_CONTROLLER (zoom_controller));
-    g_signal_connect (G_OBJECT (zoom_controller), "scale-changed", G_CALLBACK (fire_zoom), NULL);
+    g_signal_connect (G_OBJECT (zoom_controller), "scale-changed", G_CALLBACK (fire_zoom), chapter_visor_data);
 }
 
 
@@ -178,5 +181,5 @@ static void
 fire_zoom (GtkGestureZoom *zoom,
         gdouble scale,
         gpointer user_data) {
-    // Do something. 
+    printf("%0.2f", scale);
 }
