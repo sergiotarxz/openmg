@@ -8,7 +8,8 @@ openmgdeps = [
     dependency('libsoup-2.4'),
     dependency('libxml-2.0'),
     dependency('libpcre2-8'),
-    dependency('gio-2.0')
+    dependency('gio-2.0'),
+    dependency('sqlite3')
 ]
 
 sources = [
@@ -26,11 +27,14 @@ sources = [
     'src/manga.c',
     'src/chapter.c',
     'src/backend/readmng.c',
+    'src/database.c',
+    'src/database/statement.c',
     'src/main.c',
 ]
 
 link_arguments = [
-    '-ldl'
+    '-ldl',
+    '-lm'
 ]
                         
 executable('openmg',
