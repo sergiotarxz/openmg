@@ -13,7 +13,7 @@ struct _MgDatabaseStatement {
 G_DEFINE_TYPE (MgDatabaseStatement, mg_database_statement, G_TYPE_OBJECT)
 
 typedef enum {
-    MG_DATABASE_STATEMENT_OWNER,
+    MG_DATABASE_STATEMENT_OWNER = 1,
     MG_DATABASE_STATEMENT_STMT,
     MG_DATABASE_STATEMENT_N_PROPERTIES
 } MgDatabaseStatementProperties;
@@ -38,7 +38,7 @@ MgDatabaseStatement *
 mg_database_statement_new (MgDatabase *owner, sqlite3_stmt *statement) {
     MgDatabaseStatement *self = NULL;
     self = MG_DATABASE_STATEMENT ((g_object_new (MG_TYPE_DATABASE_STATEMENT,
-                    "owner", owner, "stmt", statement)));
+                    "owner", owner, "stmt", statement, NULL)));
     return self;
 }
 
@@ -52,7 +52,7 @@ mg_database_statement_class_init (MgDatabaseStatementClass *class) {
             "owner",
             "Owner",
             "Owner MgDatabase.",
-            MG_TYPE_DATABASE_STATEMENT,
+            MG_TYPE_DATABASE,
             G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE);
     database_statement_properties[MG_DATABASE_STATEMENT_STMT] = g_param_spec_pointer (
             "stmt",
@@ -95,6 +95,7 @@ mg_database_statement_set_property (GObject *object,
                 g_clear_object (&(self->owner));
             }
             self->owner = g_value_peek_pointer (value);
+            g_object_ref (self->owner);
             break;
         case MG_DATABASE_STATEMENT_STMT:
             if (self->stmt) {
@@ -124,17 +125,47 @@ mg_database_statement_get_stmt (MgDatabaseStatement *self) {
 static void
 mg_database_statement_dispose (GObject *object) {
     MgDatabaseStatement *self = MG_DATABASE_STATEMENT (object);
-    g_clear_object (&(self->owner));
+    if (self->owner) {
+        g_clear_object (&(self->owner));
+    }
     sqlite3_finalize (self->stmt);
 }
 
-void
-mg_database_statement_bind_text (MgDatabaseStatement *self, int index, char *value) {
+int
+mg_database_statement_bind_text (MgDatabaseStatement *self,
+        int index, const char *value) {
     sqlite3_stmt *stmt = mg_database_statement_get_stmt (self);
     int error = sqlite3_bind_text (stmt, index, value, -1, SQLITE_TRANSIENT);
     if ( error != SQLITE_OK ) {
         g_error (mg_database_get_error_string (self->owner));
     }
+    return error;
+}
+
+int
+mg_database_statement_step (MgDatabaseStatement *self) {
+    sqlite3_stmt *stmt = mg_database_statement_get_stmt (self);
+    int error;
+    while ((error = sqlite3_step (stmt)) == SQLITE_BUSY) {
+    }
+    if (error != SQLITE_DONE && error != SQLITE_ROW) {
+        g_error (mg_database_get_error_string (self->owner));
+    }
+    return error;
+}
+
+const unsigned char *
+mg_database_statement_column_text (MgDatabaseStatement *self,
+        int i_col) {
+    sqlite3_stmt *stmt = mg_database_statement_get_stmt (self);
+    return sqlite3_column_text (stmt, i_col);
+}
+
+int
+mg_database_statement_column_int (MgDatabaseStatement *self,
+        int i_col) {
+    sqlite3_stmt *stmt = mg_database_statement_get_stmt (self);
+    return sqlite3_column_int (stmt, i_col);
 }
 
 static void

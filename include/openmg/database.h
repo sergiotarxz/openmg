@@ -16,7 +16,7 @@ mg_database_prepare (MgDatabase *self, char *z_sql, const char **pz_tail);
 int
 mg_database_get_affected_rows (MgDatabase *self);
 
-char *
+const char *
 mg_database_get_error_string (MgDatabase *self);
 
 G_END_DECLS

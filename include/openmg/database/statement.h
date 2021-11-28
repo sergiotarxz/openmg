@@ -8,8 +8,19 @@ G_DECLARE_FINAL_TYPE (MgDatabaseStatement, mg_database_statement, MG, DATABASE_S
 
 MgDatabaseStatement *mg_database_statement_new ();
 
-void
-mg_database_statement_bind_text (MgDatabaseStatement *self, int index, char *value);
+int
+mg_database_statement_bind_text (MgDatabaseStatement *self,
+        int index, const char *value);
+int
+mg_database_statement_step (MgDatabaseStatement *self);
+
+const unsigned char *
+mg_database_statement_column_text (MgDatabaseStatement *self,
+        int i_col);
+
+int
+mg_database_statement_column_int (MgDatabaseStatement *self,
+        int i_col);
 
 G_END_DECLS
 
