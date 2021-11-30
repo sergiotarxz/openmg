@@ -69,13 +69,22 @@ create_main_box (AdwApplicationWindow *window) {
 
 static AdwHeaderBar *
 create_headerbar (GtkBox *box, AdwLeaflet *views_leaflet, GtkButton **out_previous) {
-    GtkWidget *title =
-        adw_window_title_new ("Window", NULL);
+    GtkButton *explore = GTK_BUTTON (gtk_button_new ());
+    GtkBox *explore_contents = GTK_BOX (gtk_box_new (GTK_ORIENTATION_VERTICAL, 10));
+    GtkWidget *explore_icon = gtk_image_new_from_icon_name ("application-rss+xml-symbolic");
+    GtkWidget *explore_title = gtk_label_new ("Explore");
+    gtk_box_append (explore_contents, explore_icon);
+    gtk_box_append (explore_contents, explore_title);
+    GValue value = G_VALUE_INIT;
+    g_value_init (&value, GTK_TYPE_WIDGET);
+    g_value_set_instance (&value, explore_contents);
+    g_object_set_property (G_OBJECT (explore), "child", &value);
+    g_value_unset (&value);
     GtkWidget *header =
         adw_header_bar_new();
     adw_header_bar_set_title_widget(
             ADW_HEADER_BAR (header),
-            GTK_WIDGET (title));
+            GTK_WIDGET (explore));
     gtk_box_append (box, header);
     GtkWidget *previous = gtk_button_new_from_icon_name ("go-previous-symbolic");
     g_signal_connect (G_OBJECT (previous), "clicked", G_CALLBACK (go_back_view),
