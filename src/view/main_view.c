@@ -5,14 +5,21 @@
 
 #include <openmg/backend/readmng.h>
 #include <openmg/manga.h>
+#include <openmg/view/controls.h>
 #include <openmg/view/list_view_manga.h>
 
 static AdwHeaderBar *
-create_headerbar (GtkBox *box, AdwLeaflet *views_leaflet);
+create_headerbar (GtkBox *box, AdwLeaflet *views_leaflet, GtkButton **out_previous);
 static GtkBox *
 create_main_box (AdwApplicationWindow *window);
 static void
 go_back_view (GtkButton *previous, gpointer user_data);
+static void
+hide_main_view (GtkWidget *main_view,
+        gpointer user_data);
+static void
+show_main_view (GtkWidget *main_view,
+        gpointer user_data);
 
 static void
 activate (AdwApplication *app,
@@ -29,6 +36,8 @@ activate (AdwApplication *app,
     GtkWidget *scroll;
     AdwLeaflet *views_leaflet = ADW_LEAFLET (adw_leaflet_new ());
     ControlsAdwaita *controls = g_malloc (sizeof *controls);
+    GtkButton *previous = NULL;
+    AdwHeaderBar *header_bar = create_headerbar (box, views_leaflet, &previous);
 
     typedef void (*swipe_back_t)(AdwLeaflet *, gboolean);
     swipe_back_t swipe_back = (swipe_back_t) dlsym
@@ -41,13 +50,15 @@ activate (AdwApplication *app,
     }
     swipe_back (views_leaflet, 1);
 
-    AdwHeaderBar *header_bar = create_headerbar (box, views_leaflet);
     controls->header = header_bar;
     controls->views_leaflet = views_leaflet;
+    controls->previous = previous;
 
     mangas = mg_backend_readmng_get_featured_manga (readmng);
     list_view = create_list_view_mangas (mangas, controls);
     scroll = gtk_scrolled_window_new ();
+    g_signal_connect (scroll, "map", G_CALLBACK (show_main_view), controls);
+    g_signal_connect (scroll, "unmap", G_CALLBACK (hide_main_view), controls);
 
     gtk_widget_set_valign (scroll, GTK_ALIGN_FILL);
     gtk_widget_set_vexpand (scroll, 1);
@@ -73,8 +84,26 @@ create_main_box (AdwApplicationWindow *window) {
     return GTK_BOX (box);
 }
 
+static void
+show_main_view (GtkWidget *main_view,
+        gpointer user_data) {
+    ControlsAdwaita *controls = (ControlsAdwaita *) user_data;
+    GtkWidget *previous = GTK_WIDGET (controls->previous);
+    AdwHeaderBar *header = controls->header;
+    adw_header_bar_remove (header, previous);
+}
+
+static void
+hide_main_view (GtkWidget *main_view,
+        gpointer user_data) {
+    ControlsAdwaita *controls = (ControlsAdwaita *) user_data;
+    GtkWidget *previous = GTK_WIDGET (controls->previous);
+    AdwHeaderBar *header = controls->header;
+    adw_header_bar_pack_start (header, previous);
+}
+
 static AdwHeaderBar *
-create_headerbar (GtkBox *box, AdwLeaflet *views_leaflet) {
+create_headerbar (GtkBox *box, AdwLeaflet *views_leaflet, GtkButton **out_previous) {
     GtkWidget *title =
         adw_window_title_new ("Window", NULL);
     GtkWidget *header =
@@ -87,7 +116,10 @@ create_headerbar (GtkBox *box, AdwLeaflet *views_leaflet) {
     g_signal_connect (G_OBJECT (previous), "clicked", G_CALLBACK (go_back_view),
             views_leaflet);
 
-    adw_header_bar_pack_start (ADW_HEADER_BAR (header), previous);
+    if (out_previous) {
+        *out_previous = GTK_BUTTON (previous);
+        g_object_ref (*out_previous);
+    }
 
 
     return ADW_HEADER_BAR (header);
@@ -98,7 +130,7 @@ go_back_view (GtkButton *previous, gpointer user_data) {
     AdwLeaflet *views_leaflet = ADW_LEAFLET (user_data);
     adw_leaflet_navigate (views_leaflet, ADW_NAVIGATION_DIRECTION_BACK);
 }
-int
+    int
 main_view_run (int argc,
         char **argv)
 {
