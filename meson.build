@@ -29,6 +29,7 @@ sources = [
     'src/backend/readmng.c',
     'src/database.c',
     'src/database/statement.c',
+    'src/view/explore.c',
     'src/main.c',
 ]
 
