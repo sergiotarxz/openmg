@@ -7,11 +7,14 @@
 #include <openmg/view/explore.h>
 
 static AdwHeaderBar *
-create_headerbar (GtkBox *box, AdwLeaflet *views_leaflet, GtkButton **out_previous);
+create_headerbar (GtkBox *box, ControlsAdwaita *controls, GtkButton **out_previous);
 static GtkBox *
 create_main_box (AdwApplicationWindow *window);
 static void
 go_back_view (GtkButton *previous, gpointer user_data);
+typedef void (*swipe_back_t)(AdwLeaflet *, gboolean);
+static AdwLeaflet *
+create_explore_leaflet (ControlsAdwaita *controls, swipe_back_t swipe_back);
 
 static void
 activate (AdwApplication *app,
@@ -22,36 +25,52 @@ activate (AdwApplication *app,
     GtkBox *box = create_main_box(
             ADW_APPLICATION_WINDOW
             (window));
-    GtkWidget *explore_view;
-    AdwLeaflet *views_leaflet = ADW_LEAFLET (adw_leaflet_new ());
+    AdwViewStack *view_stack = ADW_VIEW_STACK (adw_view_stack_new ());
     ControlsAdwaita *controls = g_malloc (sizeof *controls);
     GtkButton *previous = NULL;
-    AdwHeaderBar *header_bar = create_headerbar (box, views_leaflet, &previous);
+    AdwLeaflet *views_leaflet_explore;
+    AdwHeaderBar *header_bar;
 
-    typedef void (*swipe_back_t)(AdwLeaflet *, gboolean);
     swipe_back_t swipe_back = (swipe_back_t) dlsym
         (NULL, "adw_leaflet_set_can_navigate_back");
-
 
     if (!swipe_back) {
         swipe_back = (swipe_back_t) dlsym
         (NULL, "adw_leaflet_set_can_swipe_back");
     }
-    swipe_back (views_leaflet, 1);
 
-    controls->header = header_bar;
-    controls->views_leaflet = views_leaflet;
-    controls->previous = previous;
     controls->is_set_previous = 0;
+    controls->header = NULL;
+    controls->view_stack = view_stack;
 
-    explore_view = create_explore_view (controls); 
 
-    adw_leaflet_append (views_leaflet, explore_view);
-    adw_leaflet_set_can_unfold (views_leaflet, false);
+    views_leaflet_explore = create_explore_leaflet (controls, swipe_back);
+    header_bar = create_headerbar (box, controls, &previous);
+    controls->header = header_bar;
+    controls->previous = previous;
 
-    gtk_box_append (box, GTK_WIDGET (views_leaflet));
+    AdwViewStackPage *explore_page = adw_view_stack_add_titled (view_stack, GTK_WIDGET (views_leaflet_explore),
+            "explore",
+            "Explore");
+    adw_view_stack_page_set_icon_name (explore_page, "view-list-symbolic");
+    gtk_box_append (box, GTK_WIDGET (view_stack));
 
     gtk_widget_show (window);
+}
+
+static AdwLeaflet *
+create_explore_leaflet (ControlsAdwaita *controls, swipe_back_t swipe_back) {
+    AdwLeaflet *views_leaflet_explore = ADW_LEAFLET (adw_leaflet_new ());
+    GtkWidget *explore_view;
+
+    controls->views_leaflet = views_leaflet_explore;
+
+    swipe_back (views_leaflet_explore, 1);
+    explore_view = create_explore_view (controls);
+    adw_leaflet_append (views_leaflet_explore, explore_view);
+    adw_leaflet_set_can_unfold (views_leaflet_explore, false);
+
+    return views_leaflet_explore;
 }
 
 static GtkBox *
@@ -65,43 +84,37 @@ create_main_box (AdwApplicationWindow *window) {
     return GTK_BOX (box);
 }
 
-
-
 static AdwHeaderBar *
-create_headerbar (GtkBox *box, AdwLeaflet *views_leaflet, GtkButton **out_previous) {
-    GtkButton *explore = GTK_BUTTON (gtk_button_new ());
-    GtkBox *explore_contents = GTK_BOX (gtk_box_new (GTK_ORIENTATION_VERTICAL, 10));
-    GtkWidget *explore_icon = gtk_image_new_from_icon_name ("application-rss+xml-symbolic");
-    GtkWidget *explore_title = gtk_label_new ("Explore");
-    gtk_box_append (explore_contents, explore_icon);
-    gtk_box_append (explore_contents, explore_title);
+create_headerbar (GtkBox *box, ControlsAdwaita *controls, GtkButton **out_previous) {
+    GtkWidget *header = adw_header_bar_new();
     GValue value = G_VALUE_INIT;
+    GtkWidget *view_switcher = adw_view_switcher_new ();
+
+    adw_view_switcher_set_stack (ADW_VIEW_SWITCHER (view_switcher),
+            controls->view_stack);
+    adw_header_bar_set_title_widget (ADW_HEADER_BAR (header), GTK_WIDGET (view_switcher));
+
     g_value_init (&value, GTK_TYPE_WIDGET);
-    g_value_set_instance (&value, explore_contents);
-    g_object_set_property (G_OBJECT (explore), "child", &value);
     g_value_unset (&value);
-    GtkWidget *header =
-        adw_header_bar_new();
-    adw_header_bar_set_title_widget(
-            ADW_HEADER_BAR (header),
-            GTK_WIDGET (explore));
+
     gtk_box_append (box, header);
+
     GtkWidget *previous = gtk_button_new_from_icon_name ("go-previous-symbolic");
     g_signal_connect (G_OBJECT (previous), "clicked", G_CALLBACK (go_back_view),
-            views_leaflet);
+            controls);
 
     if (out_previous) {
         *out_previous = GTK_BUTTON (previous);
         g_object_ref (*out_previous);
     }
 
-
     return ADW_HEADER_BAR (header);
 }
 
 static void
 go_back_view (GtkButton *previous, gpointer user_data) {
-    AdwLeaflet *views_leaflet = ADW_LEAFLET (user_data);
+    ControlsAdwaita *controls = (ControlsAdwaita *) user_data;
+    AdwLeaflet *views_leaflet = controls->views_leaflet;
     adw_leaflet_navigate (views_leaflet, ADW_NAVIGATION_DIRECTION_BACK);
 }
     int
