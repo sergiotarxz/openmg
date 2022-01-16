@@ -27,6 +27,6 @@ mg_util_regex_splitted_string_free (MgUtilRegex *self,
         struct SplittedString *splitted_string);
 char *
 mg_util_regex_match_1 (MgUtilRegex *self,
-        char *re_str, char *subject);
+        const char *re_str, const char *subject);
 
 G_END_DECLS

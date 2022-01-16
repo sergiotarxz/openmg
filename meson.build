@@ -9,7 +9,8 @@ openmgdeps = [
     dependency('libxml-2.0'),
     dependency('libpcre2-8'),
     dependency('gio-2.0'),
-    dependency('sqlite3')
+    dependency('sqlite3'),
+    dependency('json-glib-1.0'),
 ]
 
 sources = [
@@ -30,6 +31,7 @@ sources = [
     'src/database.c',
     'src/database/statement.c',
     'src/view/explore.c',
+    'src/view/search.c',
     'src/main.c',
 ]
 

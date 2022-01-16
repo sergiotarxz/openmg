@@ -1,4 +1,6 @@
 #include <gtk/gtk.h>
+#include <json-glib/json-glib.h>
+
 #include <libxml/HTMLparser.h>
 
 #ifndef PCRE2_CODE_UNIT_WIDTH
@@ -63,6 +65,8 @@ static MgMangaChapter *
 mg_backend_readmng_loop_li_chapter (
         MgBackendReadmng *self,
         xmlNodePtr li);
+static char *
+mg_backend_readmng_fetch_search (MgBackendReadmng *self, const char *search_query);
 static GListModel *
 mg_backend_readmng_parse_page (MgBackendReadmng *self,
         xmlDocPtr html_document);
@@ -92,6 +96,8 @@ static GListStore *
 mg_backend_readmng_parse_main_page (MgBackendReadmng *self, const xmlDocPtr html_document);
 static xmlDocPtr
 mg_backend_readmng_fetch_xml_main_page (MgBackendReadmng *self);
+static char *
+mg_backend_readmng_get_id_manga_link_from_string (MgBackendReadmng *self, const char *url);
 
 MgBackendReadmng *
 mg_backend_readmng_new(void) {
@@ -224,6 +230,113 @@ mg_backend_readmng_fetch_page_url (MgBackendReadmng *self,
             | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING );
     g_free (html_response);
     return document;
+}
+
+GListStore *
+mg_backend_readmng_search (MgBackendReadmng *self,
+        const char *search_query) {
+    char *response = mg_backend_readmng_fetch_search (self, search_query);
+    JsonParser *parser = json_parser_new ();
+    GListStore *mangas = g_list_store_new(MG_TYPE_MANGA);
+    GError *error = NULL;
+    JsonNode *root = NULL;
+    JsonArray *mangas_json_array = NULL;
+    guint mangas_json_array_len = 0;
+
+    json_parser_load_from_data (parser, response, -1, &error);
+    if (error) {
+        g_warning ("Unable to parse json: %s.", error->message);
+        g_clear_error (&error);
+        goto cleanup_mg_backend_readmng_search;
+    }
+    root = json_parser_get_root (parser); 
+    if (json_node_get_node_type (root) != JSON_NODE_ARRAY) {
+        goto cleanup_mg_backend_readmng_search;
+    }
+    mangas_json_array = json_node_get_array (root);
+    mangas_json_array_len = json_array_get_length (
+            mangas_json_array);
+    for (guint i = 0; i < mangas_json_array_len; i++) {
+        JsonObject *manga_json_object =
+            json_array_get_object_element (mangas_json_array, i);
+        char *id_manga = NULL;
+        const char *url = json_object_get_string_member
+            (manga_json_object, "url");
+        const char *title = json_object_get_string_member
+            (manga_json_object, "title");
+        const char *image = json_object_get_string_member
+            (manga_json_object, "image");
+
+        id_manga = mg_backend_readmng_get_id_manga_link_from_string (self, url);
+        g_list_store_append (mangas, mg_manga_new (image, title, id_manga));
+
+        pcre2_substring_free ((PCRE2_UCHAR8 *) id_manga);
+    }
+cleanup_mg_backend_readmng_search:
+    g_clear_object (&parser);
+    g_free (response);
+    response = NULL;
+    return mangas;
+}
+
+static char *
+mg_backend_readmng_fetch_search (MgBackendReadmng *self, const char *search_query) {
+    MgUtilSoup *util_soup;
+    MgUtilString *string_util;
+
+    char *request_url;
+
+    size_t request_url_len;
+    size_t response_len = 0;
+
+    util_soup = mg_util_soup_new (); 
+    string_util = mg_util_string_new ();
+    request_url_len = snprintf ( NULL, 0, "%s/%s/", self->base_url, "service/search");
+    request_url = mg_util_string_alloc_string (string_util, request_url_len); 
+    snprintf ( request_url, request_url_len+1, "%s/%s/", self->base_url, "service/search");
+
+    SoupParam headers[] = {
+        {
+            .key = "Accept",
+            .value = "application/json, text/javascript, */*; q=0.01"
+        },
+        {
+            .key = "Content-Type",
+            .value = "application/x-www-form-urlencoded; charset=UTF-8"
+        },
+        {
+            .key = "X-Requested-With",
+            .value = "XMLHttpRequest"
+        }
+    };
+
+    char *phrase = g_malloc (strlen (search_query) + 1);
+    snprintf ( phrase, strlen (search_query) + 1, "%s", search_query);
+
+    SoupParam body[] = {
+        {
+            .key = "dataType",
+            .value = "json"
+        },
+        {
+            .key = "phrase",
+            .value = phrase 
+        }
+    };
+
+    size_t headers_len = sizeof headers / sizeof *headers;
+    size_t body_len = sizeof body / sizeof *body;
+
+    char *text_response = mg_util_soup_post_request_url_encoded (util_soup,
+            request_url, body, body_len, headers, headers_len, &response_len);
+
+    g_free (request_url);
+    g_free (phrase);
+    request_url = NULL;
+    g_clear_object (&util_soup);
+    g_clear_object (&string_util);
+
+    return text_response;
 }
 
 
@@ -402,7 +515,6 @@ mg_backend_readmng_fetch_xml_details (MgBackendReadmng *self,
     size_t request_url_len;
     size_t response_len = 0;
 
-
     util_soup = mg_util_soup_new (); 
     string_util = mg_util_string_new ();
     manga_id = mg_manga_get_id (manga);
@@ -573,13 +685,18 @@ mg_backend_readmng_find_a_link_chapter (MgBackendReadmng *self,
 
 static char *
 mg_backend_readmng_get_id_manga_link (MgBackendReadmng *self, xmlNodePtr a) {
-    char *re_str = "readmng\\.com/([^/]+)";
     MgUtilXML *xml_utils = self->xml_utils;
-    MgUtilRegex *regex_util = mg_util_regex_new ();
     char *href = mg_util_xml_get_attr (xml_utils, a, "href");
-    char *result = mg_util_regex_match_1 (regex_util, re_str, href);
-
+    char *result = mg_backend_readmng_get_id_manga_link_from_string (self, href);
     g_free (href);
+    return result;
+}
+
+static char *
+mg_backend_readmng_get_id_manga_link_from_string (MgBackendReadmng *self, const char *url) {
+    MgUtilRegex *regex_util = mg_util_regex_new ();
+    char *re_str = "readmng\\.com/([^/]+)";
+    char *result = mg_util_regex_match_1 (regex_util, re_str, url);
     g_clear_object (&regex_util);
     return result;
 }

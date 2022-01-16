@@ -131,7 +131,7 @@ cleanup_iterate_string_to_split:
 
 char *
 mg_util_regex_match_1 (MgUtilRegex *self,
-        char *re_str, char *subject) {
+        const char *re_str, const char *subject) {
     pcre2_code *re;    
     pcre2_match_data *match_data;
 

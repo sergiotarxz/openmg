@@ -30,6 +30,10 @@ mg_backend_readmng_new (void);
 GListStore *
 mg_backend_readmng_get_featured_manga (MgBackendReadmng *self);
 
+GListStore *
+mg_backend_readmng_search (MgBackendReadmng *self,
+        const char *search_query);
+
 void
 mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
         MgManga *manga);

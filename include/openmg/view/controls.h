@@ -2,6 +2,9 @@
 
 #include <glib.h>
 
+#include <gtk/gtk.h>
+#include <adwaita.h>
+
 typedef struct {
     AdwHeaderBar *header;
     AdwLeaflet *views_leaflet;

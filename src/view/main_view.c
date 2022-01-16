@@ -5,6 +5,7 @@
 
 #include <openmg/view/controls.h>
 #include <openmg/view/explore.h>
+#include <openmg/view/search.h>
 
 static AdwHeaderBar *
 create_headerbar (GtkBox *box, ControlsAdwaita *controls, GtkButton **out_previous);
@@ -15,6 +16,8 @@ go_back_view (GtkButton *previous, gpointer user_data);
 typedef void (*swipe_back_t)(AdwLeaflet *, gboolean);
 static AdwLeaflet *
 create_explore_leaflet (ControlsAdwaita *controls, swipe_back_t swipe_back);
+static AdwLeaflet *
+create_search_leaflet (ControlsAdwaita *controls, swipe_back_t swipe_back);
 
 static void
 activate (AdwApplication *app,
@@ -29,6 +32,7 @@ activate (AdwApplication *app,
     ControlsAdwaita *controls = g_malloc (sizeof *controls);
     GtkButton *previous = NULL;
     AdwLeaflet *views_leaflet_explore;
+    AdwLeaflet *views_leaflet_search;
     AdwHeaderBar *header_bar;
 
     swipe_back_t swipe_back = (swipe_back_t) dlsym
@@ -45,6 +49,7 @@ activate (AdwApplication *app,
 
 
     views_leaflet_explore = create_explore_leaflet (controls, swipe_back);
+    views_leaflet_search = create_search_leaflet (controls, swipe_back);
     header_bar = create_headerbar (box, controls, &previous);
     controls->header = header_bar;
     controls->previous = previous;
@@ -52,10 +57,30 @@ activate (AdwApplication *app,
     AdwViewStackPage *explore_page = adw_view_stack_add_titled (view_stack, GTK_WIDGET (views_leaflet_explore),
             "explore",
             "Explore");
+    AdwViewStackPage *search_page = adw_view_stack_add_titled (view_stack, GTK_WIDGET (views_leaflet_search),
+            "search",
+            "Search");
+
     adw_view_stack_page_set_icon_name (explore_page, "view-list-symbolic");
+    adw_view_stack_page_set_icon_name (search_page, "system-search-symbolic");
+
     gtk_box_append (box, GTK_WIDGET (view_stack));
 
     gtk_widget_show (window);
+}
+
+static AdwLeaflet *
+create_search_leaflet (ControlsAdwaita *controls, swipe_back_t swipe_back) {
+    AdwLeaflet *views_leaflet = ADW_LEAFLET (adw_leaflet_new ());
+    GtkWidget *search_view;
+    swipe_back (views_leaflet, 1);
+    search_view = create_search_view (controls); 
+
+    adw_leaflet_append (views_leaflet, search_view);
+
+    adw_leaflet_set_can_unfold (views_leaflet, false);
+
+    return views_leaflet;
 }
 
 static AdwLeaflet *
@@ -75,8 +100,7 @@ create_explore_leaflet (ControlsAdwaita *controls, swipe_back_t swipe_back) {
 
 static GtkBox *
 create_main_box (AdwApplicationWindow *window) {
-    GtkWidget *box = gtk_box_new(
-            GTK_ORIENTATION_VERTICAL,
+    GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL,
             10);
     adw_application_window_set_content(
             window,
