@@ -49,12 +49,15 @@ static void
 zoom_end (GtkGesture *zoom,
         GdkEventSequence *sequence,
         gpointer user_data);
+static void
+picture_ready_manga_page (GObject *source_object,
+        GAsyncResult *res,
+        gpointer user_data);
  
 static void
 image_page_show (GtkWidget *picture, gpointer user_data) {
     ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
 
-    chapter_visor_data->zoom = 1;
     set_image_dimensions (picture, chapter_visor_data, 1);
 }
 
@@ -100,6 +103,7 @@ setup_chapter_view (MgMangaChapter *chapter, AdwLeaflet *views_leaflet) {
     chapter_visor_data->current_page = 0;
     chapter_visor_data->pages = pages;
     chapter_visor_data->views_leaflet = views_leaflet;
+    chapter_visor_data->zoom = 1;
     chapter_visor_data->zoomable_picture_container = zoomable_picture_container;
     set_zoomable_picture_container_properties (zoomable_picture_container,
         chapter_visor_data);
@@ -148,12 +152,10 @@ go_prev (GtkButton *prev,
     }
 }
 
-
 static void
 set_image_zoomable_picture_container (ChapterVisorData *chapter_visor_data) {
     GtkScrolledWindow *zoomable_picture_container = chapter_visor_data->zoomable_picture_container;
     MgUtilString *string_util = mg_util_string_new ();
-    GtkPicture *current_picture;
     GListModel *pages = chapter_visor_data->pages;
     guint current_page = chapter_visor_data->current_page;
     const char *url_image_not_owned =
@@ -165,15 +167,26 @@ set_image_zoomable_picture_container (ChapterVisorData *chapter_visor_data) {
             strlen(url_image_not_owned) + 1, 0,
             strlen (url_image_not_owned));
 
-    current_picture = create_picture_from_url
-        (url_image, 0);
-    chapter_visor_data->current_picture = current_picture;
-    g_signal_connect (G_OBJECT (current_picture), "map",
-            G_CALLBACK (image_page_show), chapter_visor_data);
-    gtk_scrolled_window_set_child (zoomable_picture_container, GTK_WIDGET (current_picture));
-
+    create_picture_from_url (url_image, 0, picture_ready_manga_page,
+            zoomable_picture_container, chapter_visor_data);
     g_free (url_image);
     g_clear_object (&string_util);
+}
+
+static void
+picture_ready_manga_page (GObject *source_object,
+        GAsyncResult *res,
+        gpointer user_data) {
+    GTask *task =  G_TASK (res);
+    ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
+    GtkWidget *picture = g_task_propagate_pointer (task, NULL);
+    GtkScrolledWindow *zoomable_picture_container = GTK_SCROLLED_WINDOW (source_object);
+    if (GTK_IS_WIDGET (picture)) {
+        chapter_visor_data->current_picture = GTK_PICTURE (picture);
+        g_signal_connect (G_OBJECT (picture), "map",
+                G_CALLBACK (image_page_show), chapter_visor_data);
+        gtk_scrolled_window_set_child (zoomable_picture_container, GTK_WIDGET (picture));
+    }
 }
 
 static void
@@ -219,7 +232,7 @@ zoom_end (GtkGesture *zoom,
         gpointer user_data) {
     ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
     gdouble scale = gtk_gesture_zoom_get_scale_delta
-            (GTK_GESTURE_ZOOM (zoom));
+        (GTK_GESTURE_ZOOM (zoom));
     gdouble scale_factor = log (scale) / 20 + log (chapter_visor_data->zoom);
     chapter_visor_data->zoom = pow (M_E, scale_factor);
 }

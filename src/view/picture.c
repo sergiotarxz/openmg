@@ -13,24 +13,36 @@
 const char *const IMAGE_CACHE_FORMAT_STRING =
 "%s/.cache/openmg/%s";
 
+typedef struct {
+    char *url;
+    gint picture_size;
+} PictureThreadAttributes;
+
 static char *
 generate_cache_file_name (void);
 GFile *
 get_image_for_url (const char *url);
 
-GtkPicture *
-create_picture_from_url (const char *const url, gint picture_size) {
-    GtkPicture *picture = NULL;
+static void
+threaded_picture_recover (GTask *task, gpointer source_object,
+        gpointer task_data, GCancellable *cancellable) {
+    PictureThreadAttributes *attrs = (PictureThreadAttributes *) task_data; 
+    const char *url = attrs->url;
+    gint picture_size = attrs->picture_size;
     GFileIOStream *iostream = NULL;
     GFile *image = NULL;
     GError *error = NULL;
     GdkTexture *texture = NULL;
+    GtkPicture *picture = NULL;
 
     size_t size_downloaded_image = 0;
     char *downloaded_image = NULL;
 
     MgUtilSoup *util_soup = mg_util_soup_new ();
+    static GMutex mutex;
+    g_mutex_lock (&mutex);
     image = get_image_for_url (url);
+    g_mutex_unlock (&mutex);
     if (!g_file_query_exists (image, NULL)) {
         downloaded_image =
             mg_util_soup_get_request
@@ -57,8 +69,10 @@ create_picture_from_url (const char *const url, gint picture_size) {
         goto cleanup_create_picture_from_url;
     }
     picture = GTK_PICTURE (gtk_picture_new_for_paintable (GDK_PAINTABLE (texture)));
-    g_object_set_property_int (G_OBJECT(picture), "height-request", picture_size);
-    g_object_set_property_int (G_OBJECT(picture), "width-request", picture_size);
+    if (GTK_IS_WIDGET (picture)) {
+        g_object_set_property_int (G_OBJECT(picture), "height-request", picture_size);
+        g_object_set_property_int (G_OBJECT(picture), "width-request", picture_size);
+    }
 
 cleanup_create_picture_from_url:
     if (downloaded_image) {
@@ -69,7 +83,31 @@ cleanup_create_picture_from_url:
         g_clear_object (&iostream);
     }
     g_clear_object (&image);
-    return picture;
+    g_task_return_pointer (task, picture, NULL);
+}
+
+static void
+free_picture_thread_attributes (gpointer user_data) {
+    PictureThreadAttributes *attrs = (PictureThreadAttributes *) user_data;
+    g_free (attrs->url);
+    g_free (attrs);
+}
+
+void
+create_picture_from_url (const char *const url, gint picture_size,
+        GAsyncReadyCallback ready, gpointer source_object,
+        gpointer callback_data) {
+    GTask *task = g_task_new (source_object, NULL, ready, callback_data);
+    size_t url_len = strlen (url) + 1;
+
+    PictureThreadAttributes *attrs = g_malloc (sizeof *attrs);
+
+    attrs->url = g_malloc (url_len * sizeof *url);
+    snprintf (attrs->url, url_len, "%s", url);
+    attrs->picture_size = picture_size;
+    g_task_set_task_data (task, attrs, free_picture_thread_attributes);
+    g_task_run_in_thread (task, threaded_picture_recover);
+
 }
 
 GFile *

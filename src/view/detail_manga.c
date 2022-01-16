@@ -59,6 +59,18 @@ toggle_folded (GtkButton *toggle_folded_button,
     }
 }
 
+static void
+picture_ready_manga_detail (GObject *source_object,
+        GAsyncResult *res,
+        gpointer user_data) {
+    GTask *task =  G_TASK (res);
+    GtkWidget *picture = g_task_propagate_pointer (task, NULL);
+    GtkBox *box = GTK_BOX (source_object);
+    if (GTK_IS_WIDGET (picture)) {
+        gtk_box_prepend (box, GTK_WIDGET (picture));
+    }
+} 
+
 GtkBox *
 create_detail_view (MgManga *manga, ControlsAdwaita *controls) {
     AdwLeaflet *views_leaflet = controls->views_leaflet;
@@ -77,7 +89,8 @@ create_detail_view (MgManga *manga, ControlsAdwaita *controls) {
             ("network-transmit-receive-symbolic"));
     GtkListView *chapter_list = NULL;
     char *url_image =  mg_manga_get_image_url(manga);
-    GtkPicture *manga_image = create_picture_from_url (url_image, 200);
+    create_picture_from_url (url_image, 200,
+            picture_ready_manga_detail, avatar_title_box, NULL);
     char *manga_title_text = mg_manga_get_title (manga);
     char *title_text = mg_util_xml_get_title_text (
             xml_util, manga_title_text);
@@ -90,7 +103,7 @@ create_detail_view (MgManga *manga, ControlsAdwaita *controls) {
     mg_backend_readmng_retrieve_manga_details (readmng, manga);
     chapter_list = create_list_view_chapters (manga, views_leaflet);
 
-    
+
     g_signal_connect (G_OBJECT (toggle_folded_button), "clicked", G_CALLBACK (toggle_folded), foldable_manga_data);
     g_signal_connect (G_OBJECT (reverse_list_button), "clicked", G_CALLBACK (reverse_list), chapter_list);
 
@@ -103,7 +116,6 @@ create_detail_view (MgManga *manga, ControlsAdwaita *controls) {
     gtk_widget_set_size_request (GTK_WIDGET (manga_description), 200, -1);
 
     gtk_label_set_use_markup (GTK_LABEL (manga_title), 1);
-    gtk_box_append (avatar_title_box, GTK_WIDGET (manga_image));
     gtk_box_append (avatar_title_box, GTK_WIDGET (manga_title));
 
     gtk_box_append (foldable_manga_data, GTK_WIDGET (avatar_title_box));
@@ -125,11 +137,11 @@ create_detail_view (MgManga *manga, ControlsAdwaita *controls) {
     g_object_ref (G_OBJECT (toggle_folded_button));
 
     g_signal_connect (detail_view, "map", G_CALLBACK (show_controls),
-        buttons);
+            buttons);
     g_signal_connect (detail_view, "unmap", G_CALLBACK (hide_controls),
-        buttons);
+            buttons);
 
-       g_clear_object (&readmng);
+    g_clear_object (&readmng);
     g_free (url_image);
     g_free (manga_title_text);
     g_free (title_text);

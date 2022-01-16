@@ -47,6 +47,19 @@ manga_selected (GtkListView *list_view,
 }
 
 static void
+picture_ready_manga_preview (GObject *source_object,
+        GAsyncResult *res,
+        gpointer user_data) {
+    GTask *task =  G_TASK (res);
+    GtkWidget *picture = g_task_propagate_pointer (task, NULL);
+    GtkBox *box = GTK_BOX (source_object);
+    if (GTK_IS_WIDGET (picture)) {
+        g_object_set_property_int (G_OBJECT (picture), "margin-end", 5);
+        gtk_box_prepend (box, picture);
+    }
+}
+
+static void
 setup_list_view_mangas (GtkSignalListItemFactory *factory,
         GtkListItem *list_item,
         gpointer user_data) {
@@ -56,13 +69,10 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
     char *image_url = mg_manga_get_image_url (manga);
 
     GtkWidget *label = gtk_label_new (manga_title);
-    GtkWidget *picture = GTK_WIDGET (
-            create_picture_from_url (image_url, 100));
+    create_picture_from_url (image_url, 100,
+        picture_ready_manga_preview, box, NULL);
 
-    if (GTK_IS_WIDGET (picture)) {
-        g_object_set_property_int (G_OBJECT (picture), "margin-end", 5);
-        gtk_box_append (box, picture);
-    }
+    g_object_set_property_int (G_OBJECT(box), "height-request", 100);
     gtk_box_append (box, label);
 
     gtk_list_item_set_child (list_item, GTK_WIDGET (box));
