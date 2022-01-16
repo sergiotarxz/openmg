@@ -18,6 +18,8 @@ static AdwLeaflet *
 create_explore_leaflet (ControlsAdwaita *controls, swipe_back_t swipe_back);
 static AdwLeaflet *
 create_search_leaflet (ControlsAdwaita *controls, swipe_back_t swipe_back);
+static void
+map_leaflet (GtkWidget *leaflet_widget, gpointer user_data);
 
 static void
 activate (AdwApplication *app,
@@ -60,6 +62,8 @@ activate (AdwApplication *app,
     AdwViewStackPage *search_page = adw_view_stack_add_titled (view_stack, GTK_WIDGET (views_leaflet_search),
             "search",
             "Search");
+    g_signal_connect (G_OBJECT (views_leaflet_search), "map", G_CALLBACK (map_leaflet), controls);
+    g_signal_connect (G_OBJECT (views_leaflet_explore), "map", G_CALLBACK (map_leaflet), controls);
 
     adw_view_stack_page_set_icon_name (explore_page, "view-list-symbolic");
     adw_view_stack_page_set_icon_name (search_page, "system-search-symbolic");
@@ -67,6 +71,13 @@ activate (AdwApplication *app,
     gtk_box_append (box, GTK_WIDGET (view_stack));
 
     gtk_widget_show (window);
+}
+
+static void
+map_leaflet (GtkWidget *leaflet_widget, gpointer user_data) {
+    ControlsAdwaita *controls = (ControlsAdwaita *) user_data;
+    AdwLeaflet *leaflet = ADW_LEAFLET (leaflet_widget);
+    controls->views_leaflet = leaflet;
 }
 
 static AdwLeaflet *

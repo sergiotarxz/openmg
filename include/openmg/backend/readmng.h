@@ -39,5 +39,8 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
         MgManga *manga);
 GListModel *
 mg_backend_readmng_get_chapter_images (MgBackendReadmng *self, MgMangaChapter *chapter);
+GListStore *
+mg_backend_readmng_search (MgBackendReadmng *self,
+        const char *search_query);
 
 G_END_DECLS
