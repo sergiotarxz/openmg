@@ -89,7 +89,7 @@ create_detail_view (MgManga *manga, ControlsAdwaita *controls) {
             ("network-transmit-receive-symbolic"));
     GtkListView *chapter_list = NULL;
     char *url_image =  mg_manga_get_image_url(manga);
-    create_picture_from_url (url_image, 200,
+    GtkPicture *picture = create_picture_from_url (url_image, 200,
             picture_ready_manga_detail, avatar_title_box, NULL);
     char *manga_title_text = mg_manga_get_title (manga);
     char *title_text = mg_util_xml_get_title_text (
@@ -116,6 +116,9 @@ create_detail_view (MgManga *manga, ControlsAdwaita *controls) {
     gtk_widget_set_size_request (GTK_WIDGET (manga_description), 200, -1);
 
     gtk_label_set_use_markup (GTK_LABEL (manga_title), 1);
+    if (picture) {
+        gtk_box_append (avatar_title_box, GTK_WIDGET (picture));
+    }
     gtk_box_append (avatar_title_box, GTK_WIDGET (manga_title));
 
     gtk_box_append (foldable_manga_data, GTK_WIDGET (avatar_title_box));

@@ -69,10 +69,13 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
     char *image_url = mg_manga_get_image_url (manga);
 
     GtkWidget *label = gtk_label_new (manga_title);
-    create_picture_from_url (image_url, 100,
+    GtkPicture *picture = create_picture_from_url (image_url, 100,
         picture_ready_manga_preview, box, NULL);
 
     g_object_set_property_int (G_OBJECT(box), "height-request", 100);
+    if (picture) {
+        gtk_box_append (box, GTK_WIDGET (picture));
+    }
     gtk_box_append (box, label);
 
     gtk_list_item_set_child (list_item, GTK_WIDGET (box));
