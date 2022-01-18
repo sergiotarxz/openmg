@@ -1,4 +1,4 @@
-#ifndef __CYGWIN64__
+#ifndef _WIN32
 #include <dlfcn.h>
 #endif
 
@@ -39,7 +39,7 @@ activate (AdwApplication *app,
     AdwLeaflet *views_leaflet_search;
     AdwHeaderBar *header_bar;
 
-#ifndef __CYGWIN64__
+#ifndef _WIN32
     swipe_back_t swipe_back = (swipe_back_t) dlsym
         (NULL, "adw_leaflet_set_can_navigate_back");
 
