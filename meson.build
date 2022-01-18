@@ -39,11 +39,18 @@ link_arguments = [
     '-ldl',
     '-lm'
 ]
-                        
+
+images_on_lists = get_option('images')
+
+cArgs = ''
+if images_on_lists
+    cArgs = cArgs + '-DLIST_IMAGES'
+endif
 executable('openmg',
     sources,
     dependencies : openmgdeps,
     include_directories : inc,
     install : true,
-    link_args : link_arguments
+    link_args : link_arguments,
+    c_args: cArgs
 )

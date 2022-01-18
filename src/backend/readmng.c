@@ -66,7 +66,8 @@ mg_backend_readmng_loop_li_chapter (
         MgBackendReadmng *self,
         xmlNodePtr li);
 static char *
-mg_backend_readmng_fetch_search (MgBackendReadmng *self, const char *search_query);
+mg_backend_readmng_fetch_search (MgBackendReadmng *self,
+        const char *search_query, size_t *response_len);
 static GListModel *
 mg_backend_readmng_parse_page (MgBackendReadmng *self,
         xmlDocPtr html_document);
@@ -235,15 +236,21 @@ mg_backend_readmng_fetch_page_url (MgBackendReadmng *self,
 GListStore *
 mg_backend_readmng_search (MgBackendReadmng *self,
         const char *search_query) {
-    char *response = mg_backend_readmng_fetch_search (self, search_query);
+    size_t response_len = 0;
+    char *response = mg_backend_readmng_fetch_search (self, search_query,
+            &response_len);
     JsonParser *parser = json_parser_new ();
-    GListStore *mangas = g_list_store_new(MG_TYPE_MANGA);
+    GListStore *mangas = g_list_store_new (MG_TYPE_MANGA);
     GError *error = NULL;
     JsonNode *root = NULL;
     JsonArray *mangas_json_array = NULL;
     guint mangas_json_array_len = 0;
 
-    json_parser_load_from_data (parser, response, -1, &error);
+    if (!response) {
+        g_warning ("Json search response is null.");
+        goto cleanup_mg_backend_readmng_search;
+    }
+    json_parser_load_from_data (parser, response, response_len, &error);
     if (error) {
         g_warning ("Unable to parse json: %s.", error->message);
         g_clear_error (&error);
@@ -280,14 +287,14 @@ cleanup_mg_backend_readmng_search:
 }
 
 static char *
-mg_backend_readmng_fetch_search (MgBackendReadmng *self, const char *search_query) {
+mg_backend_readmng_fetch_search (MgBackendReadmng *self,
+        const char *search_query, size_t *response_len) {
     MgUtilSoup *util_soup;
     MgUtilString *string_util;
 
     char *request_url;
 
     size_t request_url_len;
-    size_t response_len = 0;
 
     util_soup = mg_util_soup_new (); 
     string_util = mg_util_string_new ();
@@ -328,7 +335,7 @@ mg_backend_readmng_fetch_search (MgBackendReadmng *self, const char *search_quer
     size_t body_len = sizeof body / sizeof *body;
 
     char *text_response = mg_util_soup_post_request_url_encoded (util_soup,
-            request_url, body, body_len, headers, headers_len, &response_len);
+            request_url, body, body_len, headers, headers_len, response_len);
 
     g_free (request_url);
     g_free (phrase);

@@ -46,6 +46,7 @@ manga_selected (GtkListView *list_view,
     adw_leaflet_navigate (views_leaflet, ADW_NAVIGATION_DIRECTION_FORWARD);
 }
 
+#ifdef LIST_IMAGES
 static void
 picture_ready_manga_preview (GObject *source_object,
         GAsyncResult *res,
@@ -58,6 +59,7 @@ picture_ready_manga_preview (GObject *source_object,
         gtk_box_prepend (box, picture);
     }
 }
+#endif
 
 static void
 setup_list_view_mangas (GtkSignalListItemFactory *factory,
@@ -69,13 +71,17 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
     char *image_url = mg_manga_get_image_url (manga);
 
     GtkWidget *label = gtk_label_new (manga_title);
+#ifdef LIST_IMAGES
     GtkPicture *picture = create_picture_from_url (image_url, 100,
         picture_ready_manga_preview, box, NULL);
+#endif
 
     g_object_set_property_int (G_OBJECT(box), "height-request", 100);
+#ifdef LIST_IMAGES
     if (picture) {
         gtk_box_append (box, GTK_WIDGET (picture));
     }
+#endif
     gtk_box_append (box, label);
 
     gtk_list_item_set_child (list_item, GTK_WIDGET (box));
