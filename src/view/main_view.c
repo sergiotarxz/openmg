@@ -1,4 +1,6 @@
+#ifndef __CYGWIN__
 #include <dlfcn.h>
+#endif
 
 #include <gtk/gtk.h>
 #include <adwaita.h>
@@ -37,6 +39,7 @@ activate (AdwApplication *app,
     AdwLeaflet *views_leaflet_search;
     AdwHeaderBar *header_bar;
 
+#ifndef __CYGWIN__
     swipe_back_t swipe_back = (swipe_back_t) dlsym
         (NULL, "adw_leaflet_set_can_navigate_back");
 
@@ -44,6 +47,9 @@ activate (AdwApplication *app,
         swipe_back = (swipe_back_t) dlsym
         (NULL, "adw_leaflet_set_can_swipe_back");
     }
+#else
+    swipe_back_t swipe_back = adw_leaflet_set_can_navigate_back;
+#endif
 
     controls->is_set_previous = 0;
     controls->header = NULL;
