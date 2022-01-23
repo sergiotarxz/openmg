@@ -2,6 +2,10 @@
 
 ## Installing the app.
 
+First fine tune the options in `me.sergiotarxz.openmg.json` for
+meson you want to have, for example preview images, complete list is
+on `meson_options.txt`
+
 ```shell
 flatpak --user remote-add --if-not-exists gnome-nightly https://nightly.gnome.org/gnome-nightly.flatpakrepo 
 flatpak install org.gnome.Sdk//master

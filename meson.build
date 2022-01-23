@@ -36,16 +36,21 @@ sources = [
 ]
 
 link_arguments = [
-    '-ldl',
     '-lm'
 ]
 
 images_on_lists = get_option('images')
+is_windows = get_option('windows')
 
-cArgs = ''
-if images_on_lists
-    cArgs = cArgs + '-DLIST_IMAGES'
+if not is_windows
+    link_arguments += ['-ldl']
 endif
+
+cArgs = []
+if images_on_lists
+    cArgs += ['-DLIST_IMAGES']
+endif
+
 executable('openmg',
     sources,
     dependencies : openmgdeps,

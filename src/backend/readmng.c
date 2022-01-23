@@ -364,7 +364,7 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
         MgManga *manga) {
     MgUtilXML *xml_utils;
 
-    xmlDocPtr html_document;
+    xmlDocPtr html_document = NULL;
     xmlNodePtr *movie_detail = NULL;
     xmlXPathObjectPtr xpath_result = NULL;
     xmlNodeSetPtr node_set = NULL;
@@ -409,7 +409,9 @@ cleanup_mg_backend_readmng_retrieve_manga_details:
     if (movie_detail) {
         g_free (movie_detail);
     }
-    xmlFreeDoc(html_document);
+    if (html_document) {
+        xmlFreeDoc(html_document);
+    }
 }
 
 static GListStore *
