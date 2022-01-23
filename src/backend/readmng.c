@@ -263,7 +263,7 @@ mg_backend_readmng_search (MgBackendReadmng *self,
     mangas_json_array = json_node_get_array (root);
     mangas_json_array_len = json_array_get_length (
             mangas_json_array);
-    for (guint i = 0; i < mangas_json_array_len; i++) {
+    for (guint i = 0; i < mangas_json_array_len && i < 19; i++) {
         JsonObject *manga_json_object =
             json_array_get_object_element (mangas_json_array, i);
         char *id_manga = NULL;

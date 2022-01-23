@@ -45,7 +45,7 @@ threaded_picture_recover (GTask *task, gpointer source_object,
     static GMutex mutex;
     g_mutex_lock (&mutex);
     if (!g_file_query_exists (image, NULL)) {
-        g_warning ("Storing %s", url);
+        g_info ("Storing %s", url);
         iostream = g_file_create_readwrite (image, G_FILE_CREATE_NONE,
                 NULL, &error);
         if (error) {
