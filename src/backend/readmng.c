@@ -409,6 +409,7 @@ cleanup_mg_backend_readmng_retrieve_manga_details:
     if (movie_detail) {
         g_free (movie_detail);
     }
+    xmlFreeDoc(html_document);
 }
 
 static GListStore *
@@ -453,6 +454,9 @@ cleanup_mg_backend_readmng_recover_chapter_list:
         xmlXPathFreeObject(xpath_result);
     }
     if (uls) {
+        for (size_t i = 0; i < ul_len; i++) {
+            xmlFreeNode(uls[i]);
+        }
         g_free (uls);
     }
     return return_value;
@@ -588,6 +592,7 @@ mg_backend_readmng_parse_main_page (MgBackendReadmng *self, const xmlDocPtr html
         xmlFreeNode (current_li);
         li[i] = NULL;
     }
+    xmlFreeNode(slides);
     g_free (li);
     return mangas;
 }
@@ -643,6 +648,11 @@ cleanup_mg_backend_readmng_retrieve_slides:
         xmlXPathFreeObject(xpath_result);
     }
     if (nodes) {
+        for (size_t i = 1; i < matching_classes_len; i++)
+        {
+            xmlFreeNode(nodes[i]);
+        }
+        
         g_free (nodes);
     }
     return slides;

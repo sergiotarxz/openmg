@@ -1,0 +1,36 @@
+#
+# Valgrind suppression file for mangareader. 
+# Warning: This file is very generic, so a real memory leak might be suppressed.
+# Also, some false positives are still captured
+#
+# Format specification:
+# http://valgrind.org/docs/manual/manual-core.html#manual-core.suppress
+#
+{
+   gtk4
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libgtk-4.so.1.600.0
+   ...
+}
+{
+   glib
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0.7100.0
+   ...
+}
+{
+   fontconfig
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libfontconfig.so.1.12.0
+   ...
+}
+{
+   gallium
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/GL/default/lib/dri/libgallium_dri.so
+   ...
+}
