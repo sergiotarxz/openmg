@@ -90,7 +90,7 @@ create_detail_view (MgManga *manga, ControlsAdwaita *controls) {
     GtkListView *chapter_list = NULL;
     char *url_image =  mg_manga_get_image_url(manga);
     GtkPicture *picture = create_picture_from_url (url_image, 200,
-            picture_ready_manga_detail, avatar_title_box, NULL);
+            picture_ready_manga_detail, avatar_title_box, NULL, false);
     char *manga_title_text = mg_manga_get_title (manga);
     char *title_text = mg_util_xml_get_title_text (
             xml_util, manga_title_text);

@@ -168,7 +168,7 @@ set_image_zoomable_picture_container (ChapterVisorData *chapter_visor_data) {
             strlen (url_image_not_owned));
 
     GtkPicture *picture = create_picture_from_url (url_image, 0, picture_ready_manga_page,
-            zoomable_picture_container, chapter_visor_data);
+            zoomable_picture_container, chapter_visor_data, false);
     if (picture) {
         chapter_visor_data->current_picture = GTK_PICTURE (picture);
         g_signal_connect (G_OBJECT (picture), "map",

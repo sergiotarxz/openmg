@@ -59,9 +59,11 @@ search_text_changed (GtkEntry *entry,
     }
     controls->image_threads = NULL;
     controls->image_threads_len = 0;
+    controls->avoid_list_image_downloads = true;
     if (!mangas) return;
     GtkSingleSelection *selection = GTK_SINGLE_SELECTION (
             gtk_list_view_get_model (list_view_mangas));
     gtk_single_selection_set_model (selection,
             G_LIST_MODEL (mangas));
+    controls->avoid_list_image_downloads = false;
 }

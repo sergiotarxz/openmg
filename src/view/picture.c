@@ -96,7 +96,7 @@ free_picture_thread_attributes (gpointer user_data) {
 GtkPicture *
 create_picture_from_url (const char *const url, gint picture_size,
         GAsyncReadyCallback ready, gpointer source_object,
-        gpointer callback_data) {
+        gpointer callback_data, bool do_not_download) {
     GtkPicture *picture = NULL;
     GFile *image = NULL;
     GdkTexture *texture = NULL;
@@ -118,7 +118,7 @@ create_picture_from_url (const char *const url, gint picture_size,
             g_object_set_property_int (G_OBJECT(picture), "width-request", picture_size);
         }
 
-    } else {
+    } else if (!do_not_download) {
         GTask *task = g_task_new (source_object, NULL, ready, callback_data);
         PictureThreadAttributes *attrs = g_malloc (sizeof *attrs);
         attrs->url = g_malloc (url_len * sizeof *url);

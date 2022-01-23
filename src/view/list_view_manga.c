@@ -26,6 +26,7 @@ manga_selected (GtkListView *list_view,
         guint position,
         gpointer user_data) {
     ControlsAdwaita *controls = (ControlsAdwaita *) user_data;
+    controls->avoid_list_image_downloads = true;;
     for (size_t i = 0; i < controls->image_threads_len; i++) {
         g_cancellable_cancel (controls->image_threads[i]);
     }
@@ -52,6 +53,7 @@ manga_selected (GtkListView *list_view,
     GtkBox *detail_view = create_detail_view (manga, controls);
     adw_leaflet_append (views_leaflet, GTK_WIDGET (detail_view));
     adw_leaflet_navigate (views_leaflet, ADW_NAVIGATION_DIRECTION_FORWARD);
+    controls->avoid_list_image_downloads = false;
 }
 
 #ifdef LIST_IMAGES
@@ -80,10 +82,13 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
     char *image_url = mg_manga_get_image_url (manga);
 
     GtkWidget *label = gtk_label_new (manga_title);
+    GtkPicture *picture = NULL;
 #ifdef LIST_IMAGES
+    printf ("%d\n", controls->avoid_list_image_downloads);
     GCancellable *cancellable = g_cancellable_new ();
-    GtkPicture *picture = create_picture_from_url (image_url, 100,
-        picture_ready_manga_preview, box, cancellable);
+    picture = create_picture_from_url (image_url, 100,
+            picture_ready_manga_preview, box, cancellable,
+            controls->avoid_list_image_downloads);
     controls->image_threads_len++;
     controls->image_threads = g_realloc (controls->image_threads, 
             controls->image_threads_len * sizeof *(controls->image_threads));

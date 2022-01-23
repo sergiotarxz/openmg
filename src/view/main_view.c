@@ -56,6 +56,7 @@ activate (AdwApplication *app,
     controls->view_stack = view_stack;
     controls->image_threads_len = 0;
     controls->image_threads = NULL;
+    controls->avoid_list_image_downloads = false;
 
     views_leaflet_explore = create_explore_leaflet (controls, swipe_back);
     views_leaflet_search = create_search_leaflet (controls, swipe_back);
