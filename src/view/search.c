@@ -9,6 +9,11 @@ static void
 search_text_changed (GtkEntry *entry,
         gpointer user_data);
 
+typedef struct {
+    GtkListView *list_view_mangas;
+    ControlsAdwaita *controls;
+} SearchTextData;
+
 GtkWidget *
 create_search_view (ControlsAdwaita *controls) {
     GtkWidget *search_view = gtk_box_new (GTK_ORIENTATION_VERTICAL, 10);
@@ -17,12 +22,15 @@ create_search_view (ControlsAdwaita *controls) {
     GtkWidget *scroll = gtk_scrolled_window_new ();
     GListStore *mangas = g_list_store_new(MG_TYPE_MANGA);
     GtkListView *list_view_mangas;
+    SearchTextData *search_text_data = g_malloc (sizeof *search_text_data);
 
     gtk_box_append (GTK_BOX (search_view), search_entry);
 
     list_view_mangas = create_list_view_mangas (mangas, controls);
+    search_text_data->list_view_mangas = list_view_mangas;
+    search_text_data ->controls = controls;
     g_signal_connect (search_entry, "activate",
-            G_CALLBACK (search_text_changed), list_view_mangas);
+            G_CALLBACK (search_text_changed), search_text_data);
 
     gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll),
             GTK_WIDGET (list_view_mangas));
@@ -36,11 +44,21 @@ create_search_view (ControlsAdwaita *controls) {
 static void
 search_text_changed (GtkEntry *entry,
         gpointer user_data) {
-    GtkListView *list_view_mangas = GTK_LIST_VIEW (user_data);
+    SearchTextData *search_text_data = (SearchTextData *) user_data;
+    ControlsAdwaita *controls = search_text_data->controls;
+    GtkListView *list_view_mangas = search_text_data->list_view_mangas;
     GtkEntryBuffer *buffer = gtk_entry_get_buffer (entry);
     MgBackendReadmng *readmng = mg_backend_readmng_new ();
     const char *search_string = gtk_entry_buffer_get_text (buffer);
     GListStore *mangas = mg_backend_readmng_search (readmng, search_string);
+    for (size_t i = 0; i < controls->image_threads_len; i++) {
+        g_cancellable_cancel (controls->image_threads[i]);
+    }
+    if (controls->image_threads) {
+        g_free (controls->image_threads);
+    }
+    controls->image_threads = NULL;
+    controls->image_threads_len = 0;
     if (!mangas) return;
     GtkSingleSelection *selection = GTK_SINGLE_SELECTION (
             gtk_list_view_get_model (list_view_mangas));
