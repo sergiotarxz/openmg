@@ -126,6 +126,7 @@ create_picture_from_url (const char *const url, gint picture_size,
         attrs->image = image;
         attrs->picture_size = picture_size;
         g_task_set_task_data (task, attrs, free_picture_thread_attributes);
+        g_task_set_return_on_cancel (task, true);
         g_task_run_in_thread (task, threaded_picture_recover);
     }
 cleanup_create_picture_from_url:
