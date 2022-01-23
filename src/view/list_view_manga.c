@@ -84,7 +84,6 @@ setup_list_view_mangas (GtkSignalListItemFactory *factory,
     GtkWidget *label = gtk_label_new (manga_title);
     GtkPicture *picture = NULL;
 #ifdef LIST_IMAGES
-    printf ("%d\n", controls->avoid_list_image_downloads);
     GCancellable *cancellable = g_cancellable_new ();
     picture = create_picture_from_url (image_url, 100,
             picture_ready_manga_preview, box, cancellable,
