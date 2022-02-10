@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=OpenMG
+GenericName=Manga Reader
+Comment=A manga reader
+Comment[es]=A manga reader
+Exec=OPENMGEXEC
+Icon=openmg
+Type=Application
+Terminal=false
+StartupWMClass=openmg
+Keywords=manga;reader;book;story;visor;
