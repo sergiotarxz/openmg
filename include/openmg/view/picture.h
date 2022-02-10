@@ -1,6 +1,6 @@
 #pragma once
 #include <gtk/gtk.h>
-void
+GtkPicture *
 create_picture_from_url (const char *const url, gint picture_size,
         GAsyncReadyCallback ready, gpointer source_object,
-        gpointer callback_data);
+        gpointer callback_data, bool do_not_download);

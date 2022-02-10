@@ -1,4 +1,6 @@
+#ifndef _WIN32
 #include <dlfcn.h>
+#endif
 
 #include <gtk/gtk.h>
 #include <adwaita.h>
@@ -37,6 +39,7 @@ activate (AdwApplication *app,
     AdwLeaflet *views_leaflet_search;
     AdwHeaderBar *header_bar;
 
+#ifndef _WIN32
     swipe_back_t swipe_back = (swipe_back_t) dlsym
         (NULL, "adw_leaflet_set_can_navigate_back");
 
@@ -44,11 +47,16 @@ activate (AdwApplication *app,
         swipe_back = (swipe_back_t) dlsym
         (NULL, "adw_leaflet_set_can_swipe_back");
     }
+#else
+    swipe_back_t swipe_back = adw_leaflet_set_can_navigate_back;
+#endif
 
     controls->is_set_previous = 0;
     controls->header = NULL;
     controls->view_stack = view_stack;
-
+    controls->image_threads_len = 0;
+    controls->image_threads = NULL;
+    controls->avoid_list_image_downloads = false;
 
     views_leaflet_explore = create_explore_leaflet (controls, swipe_back);
     views_leaflet_search = create_search_leaflet (controls, swipe_back);

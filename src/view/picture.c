@@ -16,6 +16,7 @@ const char *const IMAGE_CACHE_FORMAT_STRING =
 typedef struct {
     char *url;
     gint picture_size;
+    GFile *image;
 } PictureThreadAttributes;
 
 static char *
@@ -30,7 +31,7 @@ threaded_picture_recover (GTask *task, gpointer source_object,
     const char *url = attrs->url;
     gint picture_size = attrs->picture_size;
     GFileIOStream *iostream = NULL;
-    GFile *image = NULL;
+    GFile *image = attrs->image;
     GError *error = NULL;
     GdkTexture *texture = NULL;
     GtkPicture *picture = NULL;
@@ -39,15 +40,12 @@ threaded_picture_recover (GTask *task, gpointer source_object,
     char *downloaded_image = NULL;
 
     MgUtilSoup *util_soup = mg_util_soup_new ();
+    downloaded_image = mg_util_soup_get_request (util_soup,
+            url, &size_downloaded_image);
     static GMutex mutex;
     g_mutex_lock (&mutex);
-    image = get_image_for_url (url);
-    g_mutex_unlock (&mutex);
     if (!g_file_query_exists (image, NULL)) {
-        downloaded_image =
-            mg_util_soup_get_request
-            (util_soup,
-             url, &size_downloaded_image);
+        g_info ("Storing %s", url);
         iostream = g_file_create_readwrite (image, G_FILE_CREATE_NONE,
                 NULL, &error);
         if (error) {
@@ -63,9 +61,11 @@ threaded_picture_recover (GTask *task, gpointer source_object,
             goto cleanup_create_picture_from_url;
         }
     }
+    g_mutex_unlock (&mutex);
     texture = gdk_texture_new_from_file (image, &error);
     if (error) {
-        fprintf (stderr, "Texture malformed.");
+        g_warning ("Texture malformed.");
+        g_clear_error (&error);
         goto cleanup_create_picture_from_url;
     }
     picture = GTK_PICTURE (gtk_picture_new_for_paintable (GDK_PAINTABLE (texture)));
@@ -93,21 +93,44 @@ free_picture_thread_attributes (gpointer user_data) {
     g_free (attrs);
 }
 
-void
+GtkPicture *
 create_picture_from_url (const char *const url, gint picture_size,
         GAsyncReadyCallback ready, gpointer source_object,
-        gpointer callback_data) {
-    GTask *task = g_task_new (source_object, NULL, ready, callback_data);
+        gpointer callback_data, bool do_not_download) {
+    GtkPicture *picture = NULL;
+    GFile *image = NULL;
+    GdkTexture *texture = NULL;
+    GError *error = NULL;
+
+    image = get_image_for_url (url);
     size_t url_len = strlen (url) + 1;
 
-    PictureThreadAttributes *attrs = g_malloc (sizeof *attrs);
+    if (g_file_query_exists (image, NULL)) {
+        texture = gdk_texture_new_from_file (image, &error);
+        if (error) {
+            g_warning ("Texture malformed.");
+            g_clear_error (&error);
+            goto cleanup_create_picture_from_url;
+        }
+        picture = GTK_PICTURE (gtk_picture_new_for_paintable (GDK_PAINTABLE (texture)));
+        if (GTK_IS_WIDGET (picture)) {
+            g_object_set_property_int (G_OBJECT(picture), "height-request", picture_size);
+            g_object_set_property_int (G_OBJECT(picture), "width-request", picture_size);
+        }
 
-    attrs->url = g_malloc (url_len * sizeof *url);
-    snprintf (attrs->url, url_len, "%s", url);
-    attrs->picture_size = picture_size;
-    g_task_set_task_data (task, attrs, free_picture_thread_attributes);
-    g_task_run_in_thread (task, threaded_picture_recover);
-
+    } else if (!do_not_download) {
+        GTask *task = g_task_new (source_object, NULL, ready, callback_data);
+        PictureThreadAttributes *attrs = g_malloc (sizeof *attrs);
+        attrs->url = g_malloc (url_len * sizeof *url);
+        snprintf (attrs->url, url_len, "%s", url);
+        attrs->image = image;
+        attrs->picture_size = picture_size;
+        g_task_set_task_data (task, attrs, free_picture_thread_attributes);
+        g_task_set_return_on_cancel (task, true);
+        g_task_run_in_thread (task, threaded_picture_recover);
+    }
+cleanup_create_picture_from_url:
+    return picture;
 }
 
 GFile *

@@ -66,7 +66,8 @@ mg_backend_readmng_loop_li_chapter (
         MgBackendReadmng *self,
         xmlNodePtr li);
 static char *
-mg_backend_readmng_fetch_search (MgBackendReadmng *self, const char *search_query);
+mg_backend_readmng_fetch_search (MgBackendReadmng *self,
+        const char *search_query, size_t *response_len);
 static GListModel *
 mg_backend_readmng_parse_page (MgBackendReadmng *self,
         xmlDocPtr html_document);
@@ -235,15 +236,21 @@ mg_backend_readmng_fetch_page_url (MgBackendReadmng *self,
 GListStore *
 mg_backend_readmng_search (MgBackendReadmng *self,
         const char *search_query) {
-    char *response = mg_backend_readmng_fetch_search (self, search_query);
+    size_t response_len = 0;
+    char *response = mg_backend_readmng_fetch_search (self, search_query,
+            &response_len);
     JsonParser *parser = json_parser_new ();
-    GListStore *mangas = g_list_store_new(MG_TYPE_MANGA);
+    GListStore *mangas = g_list_store_new (MG_TYPE_MANGA);
     GError *error = NULL;
     JsonNode *root = NULL;
     JsonArray *mangas_json_array = NULL;
     guint mangas_json_array_len = 0;
 
-    json_parser_load_from_data (parser, response, -1, &error);
+    if (!response) {
+        g_warning ("Json search response is null.");
+        goto cleanup_mg_backend_readmng_search;
+    }
+    json_parser_load_from_data (parser, response, response_len, &error);
     if (error) {
         g_warning ("Unable to parse json: %s.", error->message);
         g_clear_error (&error);
@@ -256,7 +263,7 @@ mg_backend_readmng_search (MgBackendReadmng *self,
     mangas_json_array = json_node_get_array (root);
     mangas_json_array_len = json_array_get_length (
             mangas_json_array);
-    for (guint i = 0; i < mangas_json_array_len; i++) {
+    for (guint i = 0; i < mangas_json_array_len && i < 19; i++) {
         JsonObject *manga_json_object =
             json_array_get_object_element (mangas_json_array, i);
         char *id_manga = NULL;
@@ -280,14 +287,14 @@ cleanup_mg_backend_readmng_search:
 }
 
 static char *
-mg_backend_readmng_fetch_search (MgBackendReadmng *self, const char *search_query) {
+mg_backend_readmng_fetch_search (MgBackendReadmng *self,
+        const char *search_query, size_t *response_len) {
     MgUtilSoup *util_soup;
     MgUtilString *string_util;
 
     char *request_url;
 
     size_t request_url_len;
-    size_t response_len = 0;
 
     util_soup = mg_util_soup_new (); 
     string_util = mg_util_string_new ();
@@ -328,7 +335,7 @@ mg_backend_readmng_fetch_search (MgBackendReadmng *self, const char *search_quer
     size_t body_len = sizeof body / sizeof *body;
 
     char *text_response = mg_util_soup_post_request_url_encoded (util_soup,
-            request_url, body, body_len, headers, headers_len, &response_len);
+            request_url, body, body_len, headers, headers_len, response_len);
 
     g_free (request_url);
     g_free (phrase);
@@ -357,7 +364,7 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
         MgManga *manga) {
     MgUtilXML *xml_utils;
 
-    xmlDocPtr html_document;
+    xmlDocPtr html_document = NULL;
     xmlNodePtr *movie_detail = NULL;
     xmlXPathObjectPtr xpath_result = NULL;
     xmlNodeSetPtr node_set = NULL;
@@ -401,6 +408,9 @@ cleanup_mg_backend_readmng_retrieve_manga_details:
     }
     if (movie_detail) {
         g_free (movie_detail);
+    }
+    if (html_document) {
+        xmlFreeDoc(html_document);
     }
 }
 
@@ -446,6 +456,9 @@ cleanup_mg_backend_readmng_recover_chapter_list:
         xmlXPathFreeObject(xpath_result);
     }
     if (uls) {
+        for (size_t i = 0; i < ul_len; i++) {
+            xmlFreeNode(uls[i]);
+        }
         g_free (uls);
     }
     return return_value;
@@ -581,6 +594,7 @@ mg_backend_readmng_parse_main_page (MgBackendReadmng *self, const xmlDocPtr html
         xmlFreeNode (current_li);
         li[i] = NULL;
     }
+    xmlFreeNode(slides);
     g_free (li);
     return mangas;
 }
@@ -636,6 +650,11 @@ cleanup_mg_backend_readmng_retrieve_slides:
         xmlXPathFreeObject(xpath_result);
     }
     if (nodes) {
+        for (size_t i = 1; i < matching_classes_len; i++)
+        {
+            xmlFreeNode(nodes[i]);
+        }
+        
         g_free (nodes);
     }
     return slides;

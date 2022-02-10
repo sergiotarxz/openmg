@@ -54,7 +54,6 @@ mg_util_soup_get_request (MgUtilSoup *self, const char *url, gsize *size_respons
     g_value_unset (&response);
     g_clear_object (&soup_session);
     g_clear_object (&msg);
-
     return return_value;
 }
 

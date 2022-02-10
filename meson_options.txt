@@ -1,0 +1,2 @@
+option('images', type : 'boolean', value : true)
+option('windows', type : 'boolean', value : false)

@@ -6,17 +6,13 @@
 #include <openmg/view/list_view_manga.h>
 
 static void
-search_text_changed (GtkEditable *self,
+search_text_changed (GtkEntry *entry,
         gpointer user_data);
-static void
-async_search_manga (GTask *task,
-        gpointer source_object,
-        gpointer task_data,
-        GCancellable *cancellable);
-static void
-set_mangas_to_list_view (GObject *source_object,
-        GAsyncResult *res,
-        gpointer user_data);
+
+typedef struct {
+    GtkListView *list_view_mangas;
+    ControlsAdwaita *controls;
+} SearchTextData;
 
 GtkWidget *
 create_search_view (ControlsAdwaita *controls) {
@@ -26,12 +22,15 @@ create_search_view (ControlsAdwaita *controls) {
     GtkWidget *scroll = gtk_scrolled_window_new ();
     GListStore *mangas = g_list_store_new(MG_TYPE_MANGA);
     GtkListView *list_view_mangas;
+    SearchTextData *search_text_data = g_malloc (sizeof *search_text_data);
 
     gtk_box_append (GTK_BOX (search_view), search_entry);
 
     list_view_mangas = create_list_view_mangas (mangas, controls);
-    g_signal_connect (search_entry, "changed",
-            G_CALLBACK (search_text_changed), list_view_mangas);
+    search_text_data->list_view_mangas = list_view_mangas;
+    search_text_data ->controls = controls;
+    g_signal_connect (search_entry, "activate",
+            G_CALLBACK (search_text_changed), search_text_data);
 
     gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroll),
             GTK_WIDGET (list_view_mangas));
@@ -42,43 +41,29 @@ create_search_view (ControlsAdwaita *controls) {
     return search_view;
 }
 
-static GCancellable *cancellable = NULL;
-
 static void
-search_text_changed (GtkEditable *editable,
+search_text_changed (GtkEntry *entry,
         gpointer user_data) {
-    if (cancellable) {
-        g_cancellable_cancel (cancellable);
-    }
-    cancellable = g_cancellable_new ();
-    GtkListView *list_view_mangas = GTK_LIST_VIEW (user_data);
-    GTask *task = g_task_new (editable, cancellable, set_mangas_to_list_view,list_view_mangas);
-    g_task_set_return_on_cancel (task, true);
-    g_task_run_in_thread (task, async_search_manga);
-}
-
-static void
-set_mangas_to_list_view (GObject *source_object,
-        GAsyncResult *res,
-        gpointer user_data) {
-    GListStore *mangas = G_LIST_STORE (g_task_propagate_pointer (G_TASK (res), NULL));
-    if (!mangas) return;
-    GtkListView *list_view_mangas = GTK_LIST_VIEW (user_data);
-    GtkSingleSelection *selection = GTK_SINGLE_SELECTION (
-            gtk_list_view_get_model (list_view_mangas));
-    gtk_single_selection_set_model (selection,
-            G_LIST_MODEL (mangas));
-}
-
-static void
-async_search_manga (GTask *task,
-        gpointer source_object,
-        gpointer task_data,
-        GCancellable *cancellable) {
-    GtkEntry *entry = GTK_ENTRY (source_object);
+    SearchTextData *search_text_data = (SearchTextData *) user_data;
+    ControlsAdwaita *controls = search_text_data->controls;
+    GtkListView *list_view_mangas = search_text_data->list_view_mangas;
     GtkEntryBuffer *buffer = gtk_entry_get_buffer (entry);
     MgBackendReadmng *readmng = mg_backend_readmng_new ();
     const char *search_string = gtk_entry_buffer_get_text (buffer);
     GListStore *mangas = mg_backend_readmng_search (readmng, search_string);
-    g_task_return_pointer (task, mangas, g_object_unref);
+    for (size_t i = 0; i < controls->image_threads_len; i++) {
+        g_cancellable_cancel (controls->image_threads[i]);
+    }
+    if (controls->image_threads) {
+        g_free (controls->image_threads);
+    }
+    controls->image_threads = NULL;
+    controls->image_threads_len = 0;
+    controls->avoid_list_image_downloads = true;
+    if (!mangas) return;
+    GtkSingleSelection *selection = GTK_SINGLE_SELECTION (
+            gtk_list_view_get_model (list_view_mangas));
+    controls->avoid_list_image_downloads = false;
+    gtk_single_selection_set_model (selection,
+            G_LIST_MODEL (mangas));
 }
