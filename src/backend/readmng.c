@@ -352,6 +352,9 @@ mg_backend_readmng_get_featured_manga (MgBackendReadmng *self) {
     GListStore *mangas;
     xmlDocPtr html_document;
     html_document = mg_backend_readmng_fetch_xml_main_page (self);
+    if (!html_document) {
+        return NULL;
+    }
     mangas = mg_backend_readmng_parse_main_page (self, html_document);
 
     xmlFreeDoc (html_document);
