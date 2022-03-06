@@ -70,9 +70,19 @@ set_image_dimensions (GtkWidget *picture,
     GdkPaintable *paintable = gtk_picture_get_paintable (GTK_PICTURE (picture));
     GtkWidget *views_leaflet = GTK_WIDGET (chapter_visor_data->views_leaflet);
     gdouble scale_factor = log (scale) / 20 + log (chapter_visor_data->zoom);
-    chapter_visor_data->zoom = pow (M_E, scale_factor);
-    guint width = gtk_widget_get_allocated_width
-            (views_leaflet) * chapter_visor_data->zoom;
+    gdouble final_zoom = pow (M_E, scale_factor);
+    guint views_leaflet_width = gtk_widget_get_allocated_width (views_leaflet);
+    if (final_zoom > 3) {
+        final_zoom = 3;
+    }
+    if (final_zoom < 1/3) {
+        final_zoom = 1/3;
+    }
+    chapter_visor_data->zoom = final_zoom;
+    if (views_leaflet_width > 600) {
+        views_leaflet_width = 300;
+    }
+    guint width = views_leaflet_width * chapter_visor_data->zoom;
     gdk_paintable_compute_concrete_size (
             paintable,
             width,
