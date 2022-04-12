@@ -38,6 +38,8 @@ activate (AdwApplication *app,
     AdwLeaflet *views_leaflet_explore;
     AdwLeaflet *views_leaflet_search;
     AdwHeaderBar *header_bar;
+    
+    gtk_window_set_default_size (GTK_WINDOW (window), 3000, 3000);
 
 #ifndef _WIN32
     swipe_back_t swipe_back = (swipe_back_t) dlsym
