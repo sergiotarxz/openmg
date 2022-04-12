@@ -1,4 +1,4 @@
-project('openmg', 'c')
+project('me.sergiotarxz.openmg', 'c')
 
 inc = include_directories('include')
 
@@ -56,12 +56,12 @@ icon_sizes = ['16', '24', '32', '48', '64', '128']
 
 foreach i : icon_sizes
     install_data(
-        'openmg.svg',
+        'me.sergiotarxz.openmg.svg',
         install_dir: get_option('datadir') / 'icons' / 'hicolor' / i + 'x' + i / 'apps',
         rename: meson.project_name() + '.svg'
     )
     install_data(
-        'openmg.svg',
+        'me.sergiotarxz.openmg.svg',
         install_dir: get_option('datadir') / 'icons' / 'hicolor' / i + 'x' + i + '@2' / 'apps',
         rename: meson.project_name() + '.svg'
     )

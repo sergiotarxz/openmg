@@ -14,9 +14,9 @@ on `meson_options.txt`
 
 ```shell
 flatpak --user remote-add --if-not-exists gnome-nightly https://nightly.gnome.org/gnome-nightly.flatpakrepo 
-flatpak install org.gnome.Sdk//master
-flatpak install org.gnome.Platform//master
-flatpak-builder --install --user build me.sergiotarxz.openmg.yml me.sergiotarxz.openmg
+flatpak --user install org.gnome.Sdk//master
+flatpak --user install org.gnome.Platform//master
+flatpak-builder --install --user build me.sergiotarxz.openmg.json me.sergiotarxz.openmg
 
 ```
 
