@@ -58,7 +58,7 @@ static void
 picture_ready_manga_page (GObject *source_object,
         GAsyncResult *res,
         gpointer user_data);
-void
+static void
 zoomable_container_keybinding_handle (GtkEventControllerKey *self,
         guint keyval, guint keycode, GdkModifierType state, gpointer user_data);
 
@@ -143,8 +143,8 @@ add_controls_overlay (GtkOverlay *overlay, ChapterVisorData *chapter_visor_data)
             ("go-next-symbolic"));
     GtkButton *previous_button = GTK_BUTTON (gtk_button_new_from_icon_name
             ("go-previous-symbolic"));
-    gtk_widget_set_can_focus (GTK_WIDGET (next_button), false);
-    gtk_widget_set_can_focus (GTK_WIDGET (previous_button), false);
+    gtk_widget_set_focusable (GTK_WIDGET (next_button), false);
+    gtk_widget_set_focusable (GTK_WIDGET (previous_button), false);
     g_signal_connect (G_OBJECT (next_button), "clicked", G_CALLBACK (go_next), chapter_visor_data);
     g_signal_connect (G_OBJECT (previous_button), "clicked", G_CALLBACK (go_prev), chapter_visor_data);
     gtk_widget_set_valign (GTK_WIDGET (next_button), GTK_ALIGN_CENTER);
@@ -154,6 +154,19 @@ add_controls_overlay (GtkOverlay *overlay, ChapterVisorData *chapter_visor_data)
     gtk_overlay_add_overlay (overlay, GTK_WIDGET (next_button));
     gtk_overlay_add_overlay (overlay, GTK_WIDGET (previous_button));
 }
+
+static void
+configure_zoomable_for_new_page (ChapterVisorData *chapter_visor_data) {
+    GtkScrolledWindow *zoomable_picture_container =
+            chapter_visor_data->zoomable_picture_container;
+    GtkAdjustment *hadjustment = gtk_scrolled_window_get_hadjustment (zoomable_picture_container);
+    GtkAdjustment *vadjustment = gtk_scrolled_window_get_vadjustment (zoomable_picture_container);
+    gtk_widget_grab_focus (GTK_WIDGET (chapter_visor_data->zoomable_picture_container));
+    set_image_zoomable_picture_container (chapter_visor_data);
+    g_object_set_property_double (G_OBJECT (vadjustment), "value", 0);
+    g_object_set_property_double (G_OBJECT (hadjustment), "value", 999);
+}
+
 static void
 go_next (GtkButton *next,
         gpointer user_data) {
@@ -161,8 +174,7 @@ go_next (GtkButton *next,
     GListModel *pages = chapter_visor_data->pages;
     if (chapter_visor_data->current_page < g_list_model_get_n_items (pages) -1) {
         chapter_visor_data->current_page = chapter_visor_data->current_page + 1;
-        gtk_widget_grab_focus (GTK_WIDGET (chapter_visor_data->zoomable_picture_container));
-        set_image_zoomable_picture_container (chapter_visor_data);
+        configure_zoomable_for_new_page (chapter_visor_data);
     }
 }
 static void
@@ -171,8 +183,7 @@ go_prev (GtkButton *prev,
     ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
     if (chapter_visor_data->current_page > 0) {
         chapter_visor_data->current_page = chapter_visor_data->current_page - 1;
-        gtk_widget_grab_focus (GTK_WIDGET (chapter_visor_data->zoomable_picture_container));
-        set_image_zoomable_picture_container (chapter_visor_data);
+        configure_zoomable_for_new_page (chapter_visor_data);
     }
 }
 
@@ -239,7 +250,7 @@ set_zoomable_picture_container_properties (
     g_signal_connect (G_OBJECT (zoom_controller), "end", G_CALLBACK (zoom_end), chapter_visor_data);
 }
 
-void
+static void
 zoomable_container_keybinding_handle (GtkEventControllerKey *self,
         guint keyval, guint keycode, GdkModifierType state, gpointer user_data) {
     ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
