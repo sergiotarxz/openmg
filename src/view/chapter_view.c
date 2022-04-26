@@ -53,7 +53,10 @@ static void
 picture_ready_manga_page (GObject *source_object,
         GAsyncResult *res,
         gpointer user_data);
- 
+void
+zoomable_container_keybinding_handle (GtkEventControllerKey *self,
+        guint keyval, guint keycode, GdkModifierType state, gpointer user_data);
+
 static void
 image_page_show (GtkWidget *picture, gpointer user_data) {
     ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
@@ -91,7 +94,7 @@ set_image_dimensions (GtkWidget *picture,
             gdk_paintable_get_intrinsic_height (paintable),
             &final_width,
             &final_height
-    );
+            );
     g_object_set_property_int (G_OBJECT (picture),
             "width-request", (int) final_width);
     g_object_set_property_int (G_OBJECT (picture),
@@ -110,13 +113,15 @@ setup_chapter_view (MgMangaChapter *chapter, AdwLeaflet *views_leaflet) {
     GtkOverlay *overlay = GTK_OVERLAY (gtk_overlay_new ());
     GListModel *pages = mg_backend_readmng_get_chapter_images (readmng, chapter);
     ChapterVisorData *chapter_visor_data = g_malloc (sizeof *chapter_visor_data);
+
     chapter_visor_data->current_page = 0;
     chapter_visor_data->pages = pages;
     chapter_visor_data->views_leaflet = views_leaflet;
     chapter_visor_data->zoom = 1;
     chapter_visor_data->zoomable_picture_container = zoomable_picture_container;
+
     set_zoomable_picture_container_properties (zoomable_picture_container,
-        chapter_visor_data);
+            chapter_visor_data);
     set_image_zoomable_picture_container (chapter_visor_data);
 
     gtk_overlay_set_child (overlay, GTK_WIDGET (zoomable_picture_container));
@@ -149,6 +154,7 @@ go_next (GtkButton *next,
     GListModel *pages = chapter_visor_data->pages;
     if (chapter_visor_data->current_page < g_list_model_get_n_items (pages) -1) {
         chapter_visor_data->current_page = chapter_visor_data->current_page + 1;
+        gtk_widget_grab_focus (GTK_WIDGET (chapter_visor_data->zoomable_picture_container));
         set_image_zoomable_picture_container (chapter_visor_data);
     }
 }
@@ -158,6 +164,7 @@ go_prev (GtkButton *prev,
     ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
     if (chapter_visor_data->current_page > 0) {
         chapter_visor_data->current_page = chapter_visor_data->current_page - 1;
+        gtk_widget_grab_focus (GTK_WIDGET (chapter_visor_data->zoomable_picture_container));
         set_image_zoomable_picture_container (chapter_visor_data);
     }
 }
@@ -210,6 +217,13 @@ set_zoomable_picture_container_properties (
         GtkScrolledWindow *zoomable_picture_container,
         ChapterVisorData *chapter_visor_data) {
     GtkGesture *zoom_controller = gtk_gesture_zoom_new ();
+    GtkEventController *key_controller = gtk_event_controller_key_new ();
+
+    g_signal_connect (G_OBJECT (key_controller), "key-pressed", G_CALLBACK (zoomable_container_keybinding_handle),
+            chapter_visor_data);
+    gtk_widget_add_controller (GTK_WIDGET (zoomable_picture_container),
+            key_controller);
+
     g_object_set_property_int (G_OBJECT (zoomable_picture_container), "hexpand", 1);
     g_object_set_property_int (G_OBJECT (zoomable_picture_container), "vexpand", 1);
     gtk_widget_add_controller (GTK_WIDGET (zoomable_picture_container),
@@ -218,6 +232,53 @@ set_zoomable_picture_container_properties (
     g_signal_connect (G_OBJECT (zoom_controller), "end", G_CALLBACK (zoom_end), chapter_visor_data);
 }
 
+void
+zoomable_container_keybinding_handle (GtkEventControllerKey *self,
+        guint keyval, guint keycode, GdkModifierType state, gpointer user_data) {
+    ChapterVisorData *chapter_visor_data = (ChapterVisorData *) user_data;
+    GtkScrolledWindow *zoomable_picture_container = chapter_visor_data->zoomable_picture_container;
+    GtkAdjustment *vadjustment = gtk_scrolled_window_get_vadjustment (zoomable_picture_container);
+    GtkAdjustment *hadjustment = gtk_scrolled_window_get_hadjustment (zoomable_picture_container);
+    GValue adjustment = G_VALUE_INIT;
+    gdouble current_adjustment;
+    gdouble change_rate_key_movement = 50;
+    printf ("got here\n");
+
+    if (state & GDK_CONTROL_MASK ) {
+        if ( keyval == '+' ) {
+            set_image_dimensions (GTK_WIDGET (chapter_visor_data->current_picture),
+                    chapter_visor_data, 2);
+        }
+        if ( keyval == '-' ) {
+            set_image_dimensions (GTK_WIDGET (chapter_visor_data->current_picture),
+                    chapter_visor_data, 0.5);
+        }
+    }
+    if (state & GDK_SHIFT_MASK ) {
+        g_object_get_property (G_OBJECT (hadjustment), "value", &adjustment);
+        current_adjustment = g_value_get_double (&adjustment);
+        if (keyval == 65361) {
+            // LEFT
+            g_object_set_property_double (G_OBJECT (hadjustment), "value", current_adjustment - change_rate_key_movement);
+        }
+        if (keyval == 65363) {
+            // RIGHT 
+            g_object_set_property_double (G_OBJECT (hadjustment), "value", current_adjustment + change_rate_key_movement);
+        }
+        g_object_get_property (G_OBJECT (vadjustment), "value", &adjustment);
+        current_adjustment = g_value_get_double (&adjustment);
+        if (keyval == 65362) {
+            // UP 
+            g_object_set_property_double (G_OBJECT (vadjustment), "value", current_adjustment - change_rate_key_movement);
+
+        }
+        if (keyval == 65364) {
+            // UP 
+            g_object_set_property_double (G_OBJECT (vadjustment), "value", current_adjustment + change_rate_key_movement);
+        }
+
+    }
+}
 
 static void
 append_chapter_view_leaflet (AdwLeaflet *views_leaflet,
