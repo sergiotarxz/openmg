@@ -10,6 +10,11 @@
 #include <openmg/util/string.h>
 #include <openmg/backend/readmng.h>
 
+#define KEY_LEFT 65361
+#define KEY_RIGHT 65363
+#define KEY_UP 65362
+#define KEY_DOWN 65364
+
 static void
 fire_zoom (GtkGestureZoom *zoom,
         gdouble scale,
@@ -138,6 +143,8 @@ add_controls_overlay (GtkOverlay *overlay, ChapterVisorData *chapter_visor_data)
             ("go-next-symbolic"));
     GtkButton *previous_button = GTK_BUTTON (gtk_button_new_from_icon_name
             ("go-previous-symbolic"));
+    gtk_widget_set_can_focus (GTK_WIDGET (next_button), false);
+    gtk_widget_set_can_focus (GTK_WIDGET (previous_button), false);
     g_signal_connect (G_OBJECT (next_button), "clicked", G_CALLBACK (go_next), chapter_visor_data);
     g_signal_connect (G_OBJECT (previous_button), "clicked", G_CALLBACK (go_prev), chapter_visor_data);
     gtk_widget_set_valign (GTK_WIDGET (next_button), GTK_ALIGN_CENTER);
@@ -242,7 +249,6 @@ zoomable_container_keybinding_handle (GtkEventControllerKey *self,
     GValue adjustment = G_VALUE_INIT;
     gdouble current_adjustment;
     gdouble change_rate_key_movement = 50;
-    printf ("got here\n");
 
     if (state & GDK_CONTROL_MASK ) {
         if ( keyval == '+' ) {
@@ -257,26 +263,30 @@ zoomable_container_keybinding_handle (GtkEventControllerKey *self,
     if (state & GDK_SHIFT_MASK ) {
         g_object_get_property (G_OBJECT (hadjustment), "value", &adjustment);
         current_adjustment = g_value_get_double (&adjustment);
-        if (keyval == 65361) {
-            // LEFT
+        if (keyval == KEY_LEFT) {
             g_object_set_property_double (G_OBJECT (hadjustment), "value", current_adjustment - change_rate_key_movement);
         }
-        if (keyval == 65363) {
-            // RIGHT 
+        if (keyval == KEY_RIGHT) {
             g_object_set_property_double (G_OBJECT (hadjustment), "value", current_adjustment + change_rate_key_movement);
         }
         g_object_get_property (G_OBJECT (vadjustment), "value", &adjustment);
         current_adjustment = g_value_get_double (&adjustment);
-        if (keyval == 65362) {
+        if (keyval == KEY_UP) {
             // UP 
             g_object_set_property_double (G_OBJECT (vadjustment), "value", current_adjustment - change_rate_key_movement);
 
         }
-        if (keyval == 65364) {
+        if (keyval == KEY_DOWN) {
             // UP 
             g_object_set_property_double (G_OBJECT (vadjustment), "value", current_adjustment + change_rate_key_movement);
         }
-
+    } else {
+        if (keyval == KEY_LEFT) {
+            go_prev (NULL, chapter_visor_data);
+        }
+        if (keyval == KEY_RIGHT) {
+            go_next (NULL, chapter_visor_data);
+        }
     }
 }
 
