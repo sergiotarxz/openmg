@@ -80,17 +80,6 @@ mg_backend_readmng_recover_chapter_list (MgBackendReadmng *self,
 static xmlDocPtr
 mg_backend_readmng_fetch_xml_details (MgBackendReadmng *self,
         MgManga *manga);
-static xmlNodePtr
-mg_backend_readmng_retrieve_img_from_thumbnail (MgBackendReadmng *self, xmlNodePtr thumbnail);
-static xmlNodePtr
-mg_backend_readmng_retrieve_ul_slides (MgBackendReadmng *self, xmlNodePtr slides) ;
-static void
-mg_backend_readmng_extract_manga_info_from_current_li (MgBackendReadmng *self, 
-        GListStore *mangas, xmlNodePtr current_li);
-static xmlNodePtr *
-mg_backend_readmng_retrieve_li_slides (MgBackendReadmng *self, const xmlNodePtr slides, size_t *li_len);
-static xmlNodePtr
-mg_backend_readmng_retrieve_slides (MgBackendReadmng *self, const xmlDocPtr html_document);
 static const char *
 mg_backend_readmng_get_main_page (MgBackendReadmng *self, size_t *len);
 static GListStore *
@@ -99,6 +88,18 @@ static xmlDocPtr
 mg_backend_readmng_fetch_xml_main_page (MgBackendReadmng *self);
 static char *
 mg_backend_readmng_get_id_manga_link_from_string (MgBackendReadmng *self, const char *url);
+static char *
+mg_backend_readmng_get_manga_id_main_page (MgBackendReadmng *self,
+        xmlDocPtr html_document, xmlNodePtr manga_slider_card);
+static char *
+mg_backend_readmng_get_manga_title_main_page (MgBackendReadmng *self,
+        xmlDocPtr html_document, xmlNodePtr manga_slider_card); 
+static char *
+mg_backend_readmng_get_manga_image_main_page (MgBackendReadmng *self,
+        xmlDocPtr html_document, xmlNodePtr manga_slider_card); 
+static MgManga *
+mg_backend_readmng_extract_from_manga_slider_card (MgBackendReadmng *self,
+        xmlDocPtr html_document, xmlNodePtr node);
 
 MgBackendReadmng *
 mg_backend_readmng_new(void) {
@@ -182,17 +183,16 @@ mg_backend_readmng_parse_page (MgBackendReadmng *self,
         xmlDocPtr html_document) {
     GListModel *images = G_LIST_MODEL 
         (gtk_string_list_new (NULL));
-
     MgUtilXML *xml_utils = self->xml_utils;
-    xmlXPathObjectPtr xpath_result = NULL;
     xmlNodeSetPtr node_set = NULL;
+	xmlXPathObjectPtr xpath_result;
     xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
-            html_document, "//img[@class]");
-    node_set = xpath_result->nodesetval;
-    if (!node_set) {
-        fprintf(stderr, "No match for images.\n");
+            html_document, NULL, "//img[@class]");
+	node_set = xpath_result->nodesetval;
+	if (!node_set) {
+		fprintf(stderr, "No match for images.\n");
         goto cleanup_mg_backend_readmng_parse_page;
-    }
+	}
     for (int i = 0; i < node_set->nodeNr; i++) {
         xmlNodePtr node = node_set->nodeTab[i];
         char *image_url = mg_util_xml_get_attr (xml_utils, node, "src");
@@ -202,6 +202,128 @@ mg_backend_readmng_parse_page (MgBackendReadmng *self,
 cleanup_mg_backend_readmng_parse_page:
     xmlXPathFreeObject(xpath_result);
     return images;
+}
+
+static MgManga *
+mg_backend_readmng_extract_from_manga_slider_card (MgBackendReadmng *self,
+        xmlDocPtr html_document, xmlNodePtr node) {
+    MgManga *manga = NULL;
+    char *image = NULL;
+    char *title = NULL;
+    char *id    = NULL;
+    image = mg_backend_readmng_get_manga_image_main_page (self, html_document,
+            node);
+    title = mg_backend_readmng_get_manga_title_main_page (self, html_document,
+            node);
+    id    = mg_backend_readmng_get_manga_id_main_page (self, html_document,
+            node);
+    if (!image) {
+        fprintf (stderr, "Failed to find image\n");
+        goto cleanup_mg_backend_readmng_extract_from_manga_slider_card;
+    }
+    if (!title) {
+        fprintf (stderr, "Failed to find title\n");
+        goto cleanup_mg_backend_readmng_extract_from_manga_slider_card;
+    }
+    if (!id) {
+        fprintf (stderr, "Failed to find id\n");
+        goto cleanup_mg_backend_readmng_extract_from_manga_slider_card;
+    }
+
+    manga = mg_manga_new (image, title, id);
+cleanup_mg_backend_readmng_extract_from_manga_slider_card:
+    if (image) {
+        g_free (image);
+    }
+    if (title) {
+        g_free (title);
+    }
+    if (id) {
+        g_free (id);
+    }
+    return manga;
+}
+
+static char *
+mg_backend_readmng_get_manga_id_main_page (MgBackendReadmng *self,
+        xmlDocPtr html_document, xmlNodePtr manga_slider_card) {
+    MgUtilXML *xml_utils            = self->xml_utils;
+    xmlXPathObjectPtr xpath_result = NULL;
+    char *id                        = NULL;
+    xmlNodeSetPtr node_set          = NULL;
+    xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils, html_document,
+        manga_slider_card, "./a");
+    if (!xpath_result) {
+        fprintf (stderr, "No matching id.\n");
+        goto cleanup_mg_backend_readmng_get_manga_id_main_page;
+    }
+    node_set = xpath_result->nodesetval;
+    if (!node_set) {
+        fprintf (stderr, "No matching id node set.\n");
+        goto cleanup_mg_backend_readmng_get_manga_id_main_page;
+    }
+    xmlNodePtr a = node_set->nodeTab[0];
+    id = mg_util_xml_get_attr (xml_utils, a, "href");
+cleanup_mg_backend_readmng_get_manga_id_main_page:
+    if (xpath_result) {
+        xmlXPathFreeObject (xpath_result);
+    }
+    return id;
+} 
+
+static char *
+mg_backend_readmng_get_manga_title_main_page (MgBackendReadmng *self,
+        xmlDocPtr html_document, xmlNodePtr manga_slider_card) {
+    MgUtilXML *xml_utils            = self->xml_utils;
+    xmlXPathObjectPtr xpath_result = NULL;
+    char *title                     = NULL;
+    xmlNodeSetPtr node_set          = NULL;
+    xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils, html_document,
+        manga_slider_card, ".//div[@class='postDetail']//h2");
+    if (!xpath_result) {
+        fprintf (stderr, "No matching title.\n");
+        goto cleanup_mg_backend_readmng_get_manga_title_main_page;
+    }
+    node_set = xpath_result->nodesetval;
+    if (!node_set) {
+        fprintf (stderr, "No matching title node set.\n");
+        goto cleanup_mg_backend_readmng_get_manga_title_main_page;
+    }
+    xmlNodePtr h2 = node_set->nodeTab[0];
+    title = (char *)xmlNodeGetContent (h2);
+cleanup_mg_backend_readmng_get_manga_title_main_page:
+    if (xpath_result) {
+        xmlXPathFreeObject (xpath_result);
+    }
+    return title;
+}
+
+static char *
+mg_backend_readmng_get_manga_image_main_page (MgBackendReadmng *self,
+        xmlDocPtr html_document, xmlNodePtr manga_slider_card) {
+    MgUtilXML *xml_utils           = self->xml_utils;
+    xmlXPathObjectPtr xpath_result = NULL;
+    char *image                    = NULL;
+    xmlNodeSetPtr node_set         = NULL;
+    xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils, html_document,
+            manga_slider_card, ".//div[@class='sliderImg']//img");
+    if (!xpath_result) {
+        fprintf (stderr, "No matching image.\n");
+        goto cleanup_mg_backend_readmng_get_manga_image_main_page;
+    }
+    node_set = xpath_result->nodesetval;
+    if (!node_set) {
+        fprintf (stderr, "No matching image node set.\n");
+        goto cleanup_mg_backend_readmng_get_manga_image_main_page;
+    }
+    xmlNodePtr img = node_set->nodeTab[0];
+    image = mg_util_xml_get_attr (xml_utils, img, "src");
+    
+cleanup_mg_backend_readmng_get_manga_image_main_page:
+    if (xpath_result) {
+        xmlXPathFreeObject (xpath_result);
+    }
+    return image;
 }
 
 static xmlDocPtr
@@ -383,7 +505,7 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
     html_document = mg_backend_readmng_fetch_xml_details (self,
             manga);
     xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
-            html_document, "//li[@class]");
+            html_document, NULL, "//li[@class]");
     node_set = xpath_result->nodesetval;
     if (!node_set) {
         fprintf(stderr, "No match\n");
@@ -430,7 +552,7 @@ mg_backend_readmng_recover_chapter_list (MgBackendReadmng *self,
     size_t ul_len = 0;
 
     xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
-            html_document_details, "//ul[@class]");
+            html_document_details, NULL, "//ul[@class]");
     node_set = xpath_result->nodesetval;
     if (!node_set) {
         fprintf(stderr, "No matching ul\n");
@@ -583,135 +705,32 @@ mg_backend_readmng_get_main_page (MgBackendReadmng *self, size_t *len) {
 
 static GListStore *
 mg_backend_readmng_parse_main_page (MgBackendReadmng *self, const xmlDocPtr html_document) {
-    GListStore *mangas = g_list_store_new(MG_TYPE_MANGA);
-    xmlNodePtr *li;
+    GListStore *mangas = g_list_store_new (MG_TYPE_MANGA);
 
-    xmlNodePtr slides = mg_backend_readmng_retrieve_slides (self, html_document);
-
-    size_t li_len = 0;
-    li = mg_backend_readmng_retrieve_li_slides (self, slides, &li_len);
-    for (int i = 0; i<li_len; i++) {
-        xmlNodePtr current_li = li[i];
-        mg_backend_readmng_extract_manga_info_from_current_li (self, 
-                mangas, current_li);
-        xmlFreeNode (current_li);
-        li[i] = NULL;
-    }
-    xmlFreeNode(slides);
-    g_free (li);
-    return mangas;
-}
-
-static xmlNodePtr *
-mg_backend_readmng_retrieve_li_slides (MgBackendReadmng *self, const xmlNodePtr slides, size_t *li_len) {
-    xmlNodePtr ul_slides = mg_backend_readmng_retrieve_ul_slides (self, slides);
-    xmlNodePtr *li = NULL;
-    for (xmlNodePtr child = ul_slides->children; child; child=child->next) {
-        (*li_len)++;
-        li = g_realloc(li, sizeof *li * *li_len);
-        li[*li_len-1] = xmlCopyNode(child, XML_COPY_NODE_RECURSIVE);
-    }
-    return li;
-}
-
-static xmlNodePtr
-mg_backend_readmng_retrieve_ul_slides(MgBackendReadmng *self, xmlNodePtr slides) {
-    for (xmlNodePtr child = slides->children; child; child = child->next) {
-        if (!strcmp((char *) child->name, "ul")) {
-            return child;
-        }
-    }
-    return NULL;
-}
-
-static xmlNodePtr
-mg_backend_readmng_retrieve_slides (MgBackendReadmng *self, const xmlDocPtr html_document) {
-    xmlNodePtr *nodes = NULL;
-    xmlXPathObjectPtr xpath_result = NULL;
     MgUtilXML *xml_utils = self->xml_utils;
-    xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
-            html_document, "//div[@class]");
-    xmlNodePtr slides = NULL;
+    xmlXPathObjectPtr xpath_result = NULL;
     xmlNodeSetPtr node_set = NULL;
-    size_t matching_classes_len = 0;
-
+    xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
+            html_document, NULL, "//div[@class='mangaSliderCard']");
     node_set = xpath_result->nodesetval;
     if (!node_set) {
-        fprintf(stderr, "No match\n");
-        goto cleanup_mg_backend_readmng_retrieve_slides;
+        fprintf(stderr, "No match for mangas.\n");
+        goto cleanup_mg_backend_readmng_parse_main_page;
     }
     for (int i = 0; i < node_set->nodeNr; i++) {
         xmlNodePtr node = node_set->nodeTab[i];
-        nodes = mg_util_xml_loop_search_class (xml_utils, node, nodes,
-                "slides", &matching_classes_len);
+        MgManga *manga = mg_backend_readmng_extract_from_manga_slider_card (self,
+                html_document, node);
+        if (!manga) {
+            continue;
+        }
+        g_list_store_append (mangas, manga); 
     }
-    if (nodes) {
-        slides = nodes[0];
-    }
-cleanup_mg_backend_readmng_retrieve_slides:
+cleanup_mg_backend_readmng_parse_main_page:
     if (xpath_result) {
-        xmlXPathFreeObject(xpath_result);
+        xmlXPathFreeObject (xpath_result);
     }
-    if (nodes) {
-        for (size_t i = 1; i < matching_classes_len; i++)
-        {
-            xmlFreeNode(nodes[i]);
-        }
-        
-        g_free (nodes);
-    }
-    return slides;
-}
-
-static xmlNodePtr
-mg_backend_readmng_retrieve_thumbnail_from_li (MgBackendReadmng *self, xmlNodePtr current_li) {
-    size_t thumbnail_len = 0;
-    MgUtilXML *xml_utils = self->xml_utils;
-    xmlNodePtr return_value = NULL;
-    xmlNodePtr *thumbnail = mg_util_xml_find_class (xml_utils, current_li, "thumbnail",
-            &thumbnail_len, NULL, 1);
-    if (!thumbnail_len) goto cleanup_mg_backend_retrieve_thumbnail_from_li;
-    return_value = thumbnail[0];
-cleanup_mg_backend_retrieve_thumbnail_from_li:
-    if (thumbnail) {
-        g_free (thumbnail);
-    }
-    return return_value;
-}
-
-static xmlNodePtr
-mg_backend_readmng_retrieve_title_from_li (MgBackendReadmng *self, xmlNodePtr li) {
-    size_t title_len = 0;
-    MgUtilXML *xml_utils = self->xml_utils;
-    xmlNodePtr return_value = NULL;
-    xmlNodePtr *title = mg_util_xml_find_class (xml_utils, li, "title", &title_len, NULL, 1);
-    if (title_len) {
-        return_value = title[0];
-    }
-    if (title) {
-        g_free (title);
-    }
-    return return_value;
-}
-
-static xmlNodePtr
-mg_backend_readmng_find_a_link_chapter (MgBackendReadmng *self,
-        xmlNodePtr current_li) {
-    for (xmlNodePtr child = current_li->children; child; child = child->next) {
-        if (!strcmp((char *)child->name, "a")) {
-            return child;
-        }
-    }
-    return NULL;
-}
-
-static char *
-mg_backend_readmng_get_id_manga_link (MgBackendReadmng *self, xmlNodePtr a) {
-    MgUtilXML *xml_utils = self->xml_utils;
-    char *href = mg_util_xml_get_attr (xml_utils, a, "href");
-    char *result = mg_backend_readmng_get_id_manga_link_from_string (self, href);
-    g_free (href);
-    return result;
+    return mangas;
 }
 
 static char *
@@ -721,38 +740,4 @@ mg_backend_readmng_get_id_manga_link_from_string (MgBackendReadmng *self, const 
     char *result = mg_util_regex_match_1 (regex_util, re_str, url);
     g_clear_object (&regex_util);
     return result;
-}
-
-static void
-mg_backend_readmng_extract_manga_info_from_current_li (MgBackendReadmng *self, 
-        GListStore *mangas, xmlNodePtr current_li) {
-
-    xmlNodePtr thumbnail = mg_backend_readmng_retrieve_thumbnail_from_li (self, current_li);
-    xmlNodePtr title = mg_backend_readmng_retrieve_title_from_li (self, current_li);
-    xmlNodePtr a = mg_backend_readmng_find_a_link_chapter (self, current_li);
-    xmlNodePtr img;
-    MgUtilXML *xml_utils = self->xml_utils;
-    char *id_manga = NULL;
-
-
-    if (thumbnail && title && (img = mg_backend_readmng_retrieve_img_from_thumbnail (self, thumbnail))
-            && a && (id_manga = mg_backend_readmng_get_id_manga_link (self, a))) {
-        char *src = mg_util_xml_get_attr (xml_utils, img, "src");
-        char *title_string = (char *)xmlNodeGetContent (title);
-        g_list_store_append (mangas, mg_manga_new (src, title_string, id_manga));
-
-        g_free (src);
-        g_free (title_string);
-        pcre2_substring_free ((PCRE2_UCHAR8 *) id_manga);
-    }
-}
-
-static xmlNodePtr
-mg_backend_readmng_retrieve_img_from_thumbnail (MgBackendReadmng *self, xmlNodePtr thumbnail) {
-    for (xmlNodePtr child = thumbnail->children; child; child=child->next) {
-        if (!strcmp((char *)child->name, "img")) {
-            return child;
-        }
-    }
-    return NULL;
 }

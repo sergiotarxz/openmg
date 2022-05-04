@@ -27,11 +27,15 @@ mg_util_xml_loop_search_class (MgUtilXML *self, const xmlNodePtr node, xmlNodePt
         const char * class, size_t *len);
 xmlXPathObjectPtr
 mg_util_xml_get_nodes_xpath_expression (MgUtilXML *self,
-        const xmlDocPtr document, char *xpath);
+        const xmlDocPtr document, const xmlNodePtr node, char *xpath);
 int
 mg_util_xml_has_class (MgUtilXML *self, 
         const char *class_attribute, const char *class_to_check);
 char *
 mg_util_xml_get_title_text (MgUtilXML *self,
         const char *const text);
+void
+mg_util_xml_print_debug_nodes (MgUtilXML *self,
+        const xmlDocPtr html_document, xmlNodePtr *nodes,
+        size_t nodes_len);
 G_END_DECLS

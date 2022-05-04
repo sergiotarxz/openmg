@@ -7,6 +7,7 @@ use Const::Fast;
 
 use Path::Tiny qw/path/;
 use JSON;
+use File::pushd;
 
 use Mojo::URL;
 use Mojo::UserAgent;
@@ -26,8 +27,14 @@ my $username             = $config->{username} // die "No user in config.";
 my $token                = $config->{token}    // die "No token in config.";
 my $host                 = $config->{host}     // die "No host in config.";
 my $commit               = `git rev-parse HEAD`;
-my $clone_url            = Path::Tiny->tempdir;
+my $clone_path           = Path::Tiny->tempdir;
+system qw/git clone/,
+  'https://gitea.sergiotarxz.freemyip.com/sergiotarxz/mangareader/',
+  $clone_path;
 
+my @subs = (compile('x86_64'), compile('aarch64'));
+
+my $arch    = shift;
 my $release = request(
     POST => '/repos/sergiotarxz/mangareader/releases' => json => {
         body             => $description,
@@ -36,7 +43,34 @@ my $release = request(
         target_commitish => 'main',
     }
 );
+
 print Data::Dumper::Dumper $release;
+my $release_id = $release->{id};
+
+for my $sub (@subs) {
+    $sub->() if ref $sub eq 'CODE';
+}
+
+sub compile {
+    my $arch                 = shift;
+    my $flatpak_builder_file = 'me.sergiotarxz.openmg.json';
+    my $app_id               = 'me.sergiotarxz.openmg';
+    my $app_output_name      = path("openmg-$arch-$tag.flatpak")->absolute;
+
+    my $push = pushd $clone_path;
+    system 'flatpak-builder', '--force-clean', '--arch', $arch, '--install', '--user',
+      'build', $flatpak_builder_file, $app_id
+      and return 1;
+    system 'flatpak', 'build-bundle', '--arch', $arch,
+      path( $ENV{HOME} )->child('.local/share/flatpak/repo/'),
+      $app_output_name, $app_id
+      and return 1;
+    return sub {
+        print Data::Dumper::Dumper request( POST =>
+"/repos/sergiotarxz/mangareader/releases/$release_id/assets?name=@{[$app_output_name->basename]}"
+              => form => { attachment => { file => "" . $app_output_name } } );
+    }
+}
 
 sub request {
     my $method    = shift // die "No method passed.";

@@ -143,11 +143,14 @@ mg_util_xml_loop_search_class (MgUtilXML *self, const xmlNodePtr node, xmlNodePt
 
 xmlXPathObjectPtr
 mg_util_xml_get_nodes_xpath_expression (MgUtilXML *self,
-        const xmlDocPtr document, char *xpath) {
+        const xmlDocPtr document, const xmlNodePtr node, char *xpath) {
     xmlXPathContextPtr context;
     xmlXPathObjectPtr result;
 
     context = xmlXPathNewContext (document);
+    if (node) {
+        context->node = node;
+    }
     result = xmlXPathEvalExpression ((const xmlChar *)xpath, context);
 
     xmlXPathFreeContext (context);
