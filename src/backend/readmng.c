@@ -184,28 +184,86 @@ mg_backend_readmng_get_chapter_images (MgBackendReadmng *self, MgMangaChapter *c
 static GListModel *
 mg_backend_readmng_parse_page (MgBackendReadmng *self,
         xmlDocPtr html_document) {
-    GListModel *images = G_LIST_MODEL 
-        (gtk_string_list_new (NULL));
-    MgUtilXML *xml_utils = self->xml_utils;
-    xmlNodeSetPtr node_set = NULL;
-	xmlXPathObjectPtr xpath_result;
+    GListModel *images             = G_LIST_MODEL (gtk_string_list_new (NULL));
+    MgUtilXML *xml_utils           = self->xml_utils;
+	MgUtilRegex *regex_util        = mg_util_regex_new ();
+    xmlNodeSetPtr node_set         = NULL;
+	xmlXPathObjectPtr xpath_result = NULL;
+	xmlNodePtr script              = NULL;
+	JsonParser *parser             = json_parser_new ();
+	JsonNode *root                 = NULL;
+	JsonObject *root_object        = NULL;
+	JsonArray *sources             = NULL;
+	JsonArray *images_json_object  = NULL;
+	JsonObject *source             = NULL;
+	guint sources_len;
+    GError *error                  = NULL;
+	char *ts_reader_run            = NULL;
+	char *ts_reader_run_json       = NULL;
     xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
-            html_document, NULL, "//img[@class]");
+            html_document, NULL, "//script[contains(., 'ts_reader')]");
+	if (!xpath_result) {
+		fprintf(stderr, "No match for images.\n");
+	}
 	node_set = xpath_result->nodesetval;
 	if (!node_set) {
 		fprintf(stderr, "No match for images.\n");
         goto cleanup_mg_backend_readmng_parse_page;
 	}
-    for (int i = 0; i < node_set->nodeNr; i++) {
-        xmlNodePtr node = node_set->nodeTab[i];
-        char *image_url = mg_util_xml_get_attr (xml_utils, node, "src");
-        gtk_string_list_append (GTK_STRING_LIST (images), image_url);
-        g_free (image_url);
-    }
+	script = node_set->nodeTab[0];
+	ts_reader_run = (char *)xmlNodeGetContent (script);
+	ts_reader_run_json = mg_util_regex_match_1 (regex_util,
+			"^\\s+ts_reader\\.run\\(((?:.|\\r|\\n)+)\\);", ts_reader_run);
+	json_parser_load_from_data (parser, ts_reader_run_json, -1,
+			&error);
+	if (error) {
+        g_warning ("Unable to parse json: %s.", error->message);
+        g_clear_error (&error);
+        goto cleanup_mg_backend_readmng_parse_page;
+	}
+	root = json_parser_get_root (parser); 
+	if (json_node_get_node_type (root) != JSON_NODE_OBJECT) {
+		fprintf(stderr, "Expected object as JSON root.\n");	
+		goto cleanup_mg_backend_readmng_parse_page;
+	}
+	root_object  = json_node_get_object (root);
+	sources = json_object_get_array_member (root_object, "sources");
+	if (!sources) {
+		fprintf(stderr, "No source in JSON.\n");	
+		goto cleanup_mg_backend_readmng_parse_page;
+	}
+	sources_len = json_array_get_length (sources);
+	if (!sources_len) {
+		fprintf(stderr, "No source element in JSON.\n");
+		goto cleanup_mg_backend_readmng_parse_page;
+	}
+	source = json_array_get_object_element (sources, 0);
+	images_json_object = json_object_get_array_member (source, "images");
+	if (!images_json_object) {
+		fprintf(stderr, "No images in JSON.\n");
+		goto cleanup_mg_backend_readmng_parse_page;
+	}
+	for (int i = 0; i < json_array_get_length(images_json_object); i++) {
+		gtk_string_list_append (GTK_STRING_LIST (images), 
+				json_array_get_string_element (images_json_object, i));
+	}
+
 cleanup_mg_backend_readmng_parse_page:
-    xmlXPathFreeObject(xpath_result);
+	if (ts_reader_run) {
+		g_free (ts_reader_run);
+	}
+	if (ts_reader_run_json) {
+		pcre2_substring_free ((PCRE2_UCHAR8 *)ts_reader_run_json);
+	}
+	if (xpath_result) {
+		xmlXPathFreeObject(xpath_result);
+	}
+	if (parser) {
+		g_clear_object (&parser);
+	}
     return images;
 }
+
 
 static MgManga *
 mg_backend_readmng_extract_from_manga_slider_card (MgBackendReadmng *self,
@@ -406,7 +464,6 @@ mg_backend_readmng_search (MgBackendReadmng *self,
             (manga_json_object, "url");
         const char *title = json_object_get_string_member
             (manga_json_object, "title");
-		printf ("%s\n", title);
         const char *image = json_object_get_string_member
             (manga_json_object, "image");
 
@@ -468,7 +525,6 @@ mg_backend_readmng_fetch_search (MgBackendReadmng *self,
 
     char *text_response = mg_util_soup_post_request_url_encoded (util_soup,
             request_url, body, body_len, headers, headers_len, response_len);
-	printf ("%s\n", text_response);
 
     g_free (request_url);
     g_free (phrase);
@@ -604,7 +660,6 @@ mg_backend_readmng_get_data_from_check_box_card (MgBackendReadmng *self,
 	
 	g_asprintf (&title, "Chapter %s", chapter_id);
 	g_asprintf (&url, "%s/%s/%s", self->base_url, manga_id, chapter_id);
-	printf ("%s\n", url);
 	chapter = mg_manga_chapter_new (title, "", url);
 	
 cleanup_mg_backend_readmng_get_data_from_check_box_card:
@@ -686,7 +741,6 @@ mg_backend_readmng_fetch_xml_details (MgBackendReadmng *self,
     string_util = mg_util_string_new ();
     manga_id = mg_manga_get_id (manga);
     g_asprintf ( &request_url, "%s/%s", self->base_url, manga_id);
-    printf ("%s\n", request_url);
     g_free (manga_id);
 
     char *html_response = mg_util_soup_get_request (util_soup,
