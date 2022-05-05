@@ -8,10 +8,12 @@ G_DECLARE_FINAL_TYPE (MgUtilString, mg_util_string, MG, UTIL_STRING, GObject)
 
 MgUtilString *mg_util_string_new ();
 char *
-mg_util_string_alloc_string(MgUtilString *self, size_t len);
+mg_util_string_alloc_string (MgUtilString *self, size_t len);
 void
-mg_util_string_copy_substring(MgUtilString *self,
+mg_util_string_copy_substring (MgUtilString *self,
         const char *origin, char *dest, size_t dest_len, size_t start,
         size_t len);
 
+int
+g_asprintf (char **strp, const char *format, ...);
 G_END_DECLS

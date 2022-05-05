@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include <glib/gprintf.h>
 #include <glib-object.h>
 
 #include <openmg/util/string.h>
@@ -45,4 +46,12 @@ mg_util_string_new () {
     MgUtilString *self = NULL;
     self = MG_UTIL_STRING ((g_object_new (MG_TYPE_UTIL_STRING, NULL)));
     return self;
+}
+int
+g_asprintf (char **strp, const char *format, ...) {
+    va_list ap;
+    va_start (ap, format);
+    int retval = g_vasprintf (strp, format, ap);
+    va_end (ap);
+    return retval;
 }

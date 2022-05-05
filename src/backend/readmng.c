@@ -76,7 +76,7 @@ mg_backend_readmng_fetch_page_url (MgBackendReadmng *self,
         MgMangaChapter *chapter);
 static GListStore *
 mg_backend_readmng_recover_chapter_list (MgBackendReadmng *self,
-        xmlDocPtr html_document_details);
+        xmlDocPtr html_document_details, MgManga *manga);
 static xmlDocPtr
 mg_backend_readmng_fetch_xml_details (MgBackendReadmng *self,
         MgManga *manga);
@@ -100,6 +100,9 @@ mg_backend_readmng_get_manga_image_main_page (MgBackendReadmng *self,
 static MgManga *
 mg_backend_readmng_extract_from_manga_slider_card (MgBackendReadmng *self,
         xmlDocPtr html_document, xmlNodePtr node);
+static MgMangaChapter *
+mg_backend_readmng_get_data_from_check_box_card (MgBackendReadmng *self,
+		xmlDocPtr html_document, xmlNodePtr check_box_card, MgManga *manga);
 
 MgBackendReadmng *
 mg_backend_readmng_new(void) {
@@ -109,7 +112,7 @@ mg_backend_readmng_new(void) {
 static void
 mg_backend_readmng_init (MgBackendReadmng *self) {
     if (!self->base_url) {
-        self->base_url = "https://www.readmng.com/";
+        self->base_url = "https://www.readmng.com";
     }
     self->xml_utils = mg_util_xml_new ();
 }
@@ -239,7 +242,7 @@ cleanup_mg_backend_readmng_extract_from_manga_slider_card:
         g_free (title);
     }
     if (id) {
-        g_free (id);
+        pcre2_substring_free ((PCRE2_UCHAR8 *)id);
     }
     return manga;
 }
@@ -248,8 +251,10 @@ static char *
 mg_backend_readmng_get_manga_id_main_page (MgBackendReadmng *self,
         xmlDocPtr html_document, xmlNodePtr manga_slider_card) {
     MgUtilXML *xml_utils            = self->xml_utils;
-    xmlXPathObjectPtr xpath_result = NULL;
+    MgUtilRegex *regex_util         = mg_util_regex_new ();
+    xmlXPathObjectPtr xpath_result  = NULL;
     char *id                        = NULL;
+    char *new_id                    = NULL;
     xmlNodeSetPtr node_set          = NULL;
     xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils, html_document,
         manga_slider_card, "./a");
@@ -264,10 +269,17 @@ mg_backend_readmng_get_manga_id_main_page (MgBackendReadmng *self,
     }
     xmlNodePtr a = node_set->nodeTab[0];
     id = mg_util_xml_get_attr (xml_utils, a, "href");
+    if (id) {
+        new_id = mg_util_regex_match_1 (regex_util, "^/([^/]+)", id);
+        g_free (id);
+        id = new_id;
+    }
+
 cleanup_mg_backend_readmng_get_manga_id_main_page:
     if (xpath_result) {
         xmlXPathFreeObject (xpath_result);
     }
+    g_clear_object (&regex_util);
     return id;
 } 
 
@@ -361,12 +373,13 @@ mg_backend_readmng_search (MgBackendReadmng *self,
     size_t response_len = 0;
     char *response = mg_backend_readmng_fetch_search (self, search_query,
             &response_len);
-    JsonParser *parser = json_parser_new ();
-    GListStore *mangas = g_list_store_new (MG_TYPE_MANGA);
-    GError *error = NULL;
-    JsonNode *root = NULL;
+    JsonParser *parser           = json_parser_new ();
+    GListStore *mangas           = g_list_store_new (MG_TYPE_MANGA);
+    GError *error                = NULL;
+    JsonNode *root               = NULL;
     JsonArray *mangas_json_array = NULL;
-    guint mangas_json_array_len = 0;
+	JsonObject *root_object      = NULL;
+    guint mangas_json_array_len  = 0;
 
     if (!response) {
         g_warning ("Json search response is null.");
@@ -379,13 +392,13 @@ mg_backend_readmng_search (MgBackendReadmng *self,
         goto cleanup_mg_backend_readmng_search;
     }
     root = json_parser_get_root (parser); 
-    if (json_node_get_node_type (root) != JSON_NODE_ARRAY) {
+    if (json_node_get_node_type (root) != JSON_NODE_OBJECT) {
         goto cleanup_mg_backend_readmng_search;
     }
-    mangas_json_array = json_node_get_array (root);
-    mangas_json_array_len = json_array_get_length (
-            mangas_json_array);
-    for (guint i = 0; i < mangas_json_array_len && i < 19; i++) {
+	root_object       = json_node_get_object (root);
+	mangas_json_array = json_object_get_array_member (root_object, "manga");
+    mangas_json_array_len = json_array_get_length (mangas_json_array);
+    for (guint i = 0; i < mangas_json_array_len && i < 5; i++) {
         JsonObject *manga_json_object =
             json_array_get_object_element (mangas_json_array, i);
         char *id_manga = NULL;
@@ -393,6 +406,7 @@ mg_backend_readmng_search (MgBackendReadmng *self,
             (manga_json_object, "url");
         const char *title = json_object_get_string_member
             (manga_json_object, "title");
+		printf ("%s\n", title);
         const char *image = json_object_get_string_member
             (manga_json_object, "image");
 
@@ -416,13 +430,9 @@ mg_backend_readmng_fetch_search (MgBackendReadmng *self,
 
     char *request_url;
 
-    size_t request_url_len;
-
     util_soup = mg_util_soup_new (); 
     string_util = mg_util_string_new ();
-    request_url_len = snprintf ( NULL, 0, "%s/%s/", self->base_url, "service/search");
-    request_url = mg_util_string_alloc_string (string_util, request_url_len); 
-    snprintf ( request_url, request_url_len+1, "%s/%s/", self->base_url, "service/search");
+    g_asprintf ( &request_url, "%s/%s/", self->base_url, "search/live");
 
     SoupParam headers[] = {
         {
@@ -458,6 +468,7 @@ mg_backend_readmng_fetch_search (MgBackendReadmng *self,
 
     char *text_response = mg_util_soup_post_request_url_encoded (util_soup,
             request_url, body, body_len, headers, headers_len, response_len);
+	printf ("%s\n", text_response);
 
     g_free (request_url);
     g_free (phrase);
@@ -505,23 +516,17 @@ mg_backend_readmng_retrieve_manga_details (MgBackendReadmng *self,
     html_document = mg_backend_readmng_fetch_xml_details (self,
             manga);
     xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
-            html_document, NULL, "//li[@class]");
+            html_document, NULL, "//div[@class='infox']//div[@class='wd-full'][2]");
     node_set = xpath_result->nodesetval;
     if (!node_set) {
         fprintf(stderr, "No match\n");
         goto cleanup_mg_backend_readmng_retrieve_manga_details;
     }
-    for (int i = 0; i < node_set->nodeNr; i++) {
-        xmlNodePtr node = node_set->nodeTab[i];
-        movie_detail = mg_util_xml_loop_search_class (xml_utils,
-                node, movie_detail, "movie-detail", &movie_detail_len);
-    } 
-    if (movie_detail) {
-        char *description = (char *) xmlNodeGetContent (movie_detail[0]);
-        mg_manga_set_description (manga, description);
-        g_free (description);
-    }
-    manga_chapters = mg_backend_readmng_recover_chapter_list (self, html_document);
+	xmlNodePtr description_node = node_set->nodeTab[0];
+	char *description = (char *) xmlNodeGetContent (description_node);
+	mg_manga_set_description (manga, description);
+	g_free (description);
+    manga_chapters = mg_backend_readmng_recover_chapter_list (self, html_document, manga);
     mg_manga_set_chapter_list (manga, manga_chapters);
     mg_manga_details_recovered (manga);
 cleanup_mg_backend_readmng_retrieve_manga_details:
@@ -541,53 +546,78 @@ cleanup_mg_backend_readmng_retrieve_manga_details:
 
 static GListStore *
 mg_backend_readmng_recover_chapter_list (MgBackendReadmng *self,
-        xmlDocPtr html_document_details) {
-    MgUtilXML *xml_utils = self->xml_utils;
+        xmlDocPtr html_document_details, MgManga *manga) {
+    MgUtilXML *xml_utils           = self->xml_utils;
     xmlXPathObjectPtr xpath_result = NULL;
-    xmlNodeSetPtr node_set = NULL;
-    xmlNodePtr *uls = NULL;
-    xmlNodePtr ul;
-    GListStore *return_value = g_list_store_new (
+    xmlNodeSetPtr node_set         = NULL;
+    GListStore *return_value       = g_list_store_new (
             MG_TYPE_MANGA_CHAPTER);
-    size_t ul_len = 0;
 
     xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
-            html_document_details, NULL, "//ul[@class]");
+            html_document_details, NULL, "//div[@class='checkBoxCard']");
     node_set = xpath_result->nodesetval;
+
     if (!node_set) {
-        fprintf(stderr, "No matching ul\n");
+        fprintf(stderr, "No matching chapter\n");
         goto cleanup_mg_backend_readmng_recover_chapter_list;
     }
+
     for (int i = 0; i < node_set->nodeNr; i++) {
-        xmlNodePtr node = node_set->nodeTab[i];
-        uls = mg_util_xml_loop_search_class (xml_utils,
-                node, uls, "chp_lst", &ul_len);
-    }
-    if (!ul_len) {
-        fprintf(stderr, "No matching chp_lst\n");
-        goto cleanup_mg_backend_readmng_recover_chapter_list;
-    }
-    ul = uls[0];
-    for (xmlNodePtr li = ul->children; li; li = li->next) {
-        if (!strcmp ((char *) li->name, "li")) {
-            MgMangaChapter *chapter = mg_backend_readmng_loop_li_chapter (self, li);
-            if (chapter) {
-                g_list_store_append (return_value, chapter);
-            }
-        }
+        xmlNodePtr check_box_card = node_set->nodeTab[i];
+		MgMangaChapter *chapter = mg_backend_readmng_get_data_from_check_box_card
+				(self, html_document_details, check_box_card, manga);
+		if (chapter) {
+			g_list_store_append (return_value, chapter);
+		}
     }
 cleanup_mg_backend_readmng_recover_chapter_list:
     if (xpath_result) {
         xmlXPathFreeObject(xpath_result);
     }
-    if (uls) {
-        for (size_t i = 0; i < ul_len; i++) {
-            xmlFreeNode(uls[i]);
-        }
-        g_free (uls);
-    }
     return return_value;
 }
+
+static MgMangaChapter *
+mg_backend_readmng_get_data_from_check_box_card (MgBackendReadmng *self,
+		xmlDocPtr html_document, xmlNodePtr check_box_card, MgManga *manga) {
+	xmlXPathObjectPtr xpath_result = NULL;
+	xmlNodeSetPtr node_set         = NULL;
+	MgMangaChapter *chapter        = NULL;
+	MgUtilXML *xml_utils           = self->xml_utils;
+	char *chapter_id               = NULL;
+	char *title                    = NULL;
+    char *url                      = NULL;
+    char *manga_id                 = mg_manga_get_id (manga);
+	xpath_result = mg_util_xml_get_nodes_xpath_expression (xml_utils,
+			html_document, check_box_card, ".//label[@data-chapter-id]");
+	if (!xpath_result) {
+		fprintf(stderr, "Unable to parse chapter, xpath failed.\n");
+		goto cleanup_mg_backend_readmng_get_data_from_check_box_card;
+	}
+	node_set = xpath_result->nodesetval;
+	if (!node_set) {
+		fprintf(stderr, "Unable to parse chapter, no nodeset.\n");
+		goto cleanup_mg_backend_readmng_get_data_from_check_box_card;
+	}
+	xmlNodePtr chapter_node = node_set->nodeTab[0];
+	chapter_id = mg_util_xml_get_attr (xml_utils, chapter_node, "data-chapter-id");
+	
+	g_asprintf (&title, "Chapter %s", chapter_id);
+	g_asprintf (&url, "%s/%s/%s", self->base_url, manga_id, chapter_id);
+	printf ("%s\n", url);
+	chapter = mg_manga_chapter_new (title, "", url);
+	
+cleanup_mg_backend_readmng_get_data_from_check_box_card:
+	if (xpath_result) {
+		xmlXPathFreeObject (xpath_result);
+	}
+	if (chapter_id) {
+		g_free (chapter_id);
+	}
+	return chapter;
+}
+
+
 
 static MgMangaChapter *
 mg_backend_readmng_loop_li_chapter (
@@ -650,15 +680,13 @@ mg_backend_readmng_fetch_xml_details (MgBackendReadmng *self,
     char *request_url;
     char *manga_id;
 
-    size_t request_url_len;
     size_t response_len = 0;
 
     util_soup = mg_util_soup_new (); 
     string_util = mg_util_string_new ();
     manga_id = mg_manga_get_id (manga);
-    request_url_len = snprintf ( NULL, 0, "%s/%s/", self->base_url, manga_id);
-    request_url = mg_util_string_alloc_string (string_util, request_url_len); 
-    snprintf ( request_url, request_url_len+1, "%s/%s/", self->base_url, manga_id);
+    g_asprintf ( &request_url, "%s/%s", self->base_url, manga_id);
+    printf ("%s\n", request_url);
     g_free (manga_id);
 
     char *html_response = mg_util_soup_get_request (util_soup,
@@ -736,7 +764,7 @@ cleanup_mg_backend_readmng_parse_main_page:
 static char *
 mg_backend_readmng_get_id_manga_link_from_string (MgBackendReadmng *self, const char *url) {
     MgUtilRegex *regex_util = mg_util_regex_new ();
-    char *re_str = "readmng\\.com/([^/]+)";
+    char *re_str = "/([^/]+)";
     char *result = mg_util_regex_match_1 (regex_util, re_str, url);
     g_clear_object (&regex_util);
     return result;
