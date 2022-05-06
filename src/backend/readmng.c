@@ -57,14 +57,6 @@ mg_backend_readmng_class_init (MgBackendReadmngClass *class) {
             mg_backend_readmng_properties);
 }
 
-static xmlNodePtr
-mg_backend_readmng_get_a_for_chapter (
-        MgBackendReadmng *self,
-        xmlNodePtr li);
-static MgMangaChapter *
-mg_backend_readmng_loop_li_chapter (
-        MgBackendReadmng *self,
-        xmlNodePtr li);
 static char *
 mg_backend_readmng_fetch_search (MgBackendReadmng *self,
         const char *search_query, size_t *response_len);
@@ -670,60 +662,6 @@ cleanup_mg_backend_readmng_get_data_from_check_box_card:
 		g_free (chapter_id);
 	}
 	return chapter;
-}
-
-
-
-static MgMangaChapter *
-mg_backend_readmng_loop_li_chapter (
-        MgBackendReadmng *self,
-        xmlNodePtr li) {
-    MgUtilXML *xml_utils = self->xml_utils;
-    MgMangaChapter *chapter = NULL;
-    xmlNodePtr a = mg_backend_readmng_get_a_for_chapter (
-            self, li);
-    if (!a) return NULL;
-
-    char *url = mg_util_xml_get_attr (xml_utils, a, "href");
-    size_t val_len = 0;
-    size_t dte_len = 0;
-
-    xmlNodePtr *val = mg_util_xml_find_class (xml_utils, a, "val", &val_len, NULL, 1);
-    xmlNodePtr *dte = mg_util_xml_find_class (xml_utils, a, "dte", &dte_len, NULL, 1);
-    if (val_len && dte_len) {
-        char *val_str = (char *) xmlNodeGetContent (val[0]);
-        char *dte_str = (char *) xmlNodeGetContent (dte[0]);
-
-        chapter = mg_manga_chapter_new (val_str, dte_str, url);
-
-        g_free (val_str);
-        g_free (dte_str);
-    }
-    if (url) {
-        g_free (url);
-    }
-    if (val) {
-        g_free (val);
-        val = NULL;
-    }
-    if (dte) {
-        g_free (dte);
-        dte = NULL;
-    }
-
-    return chapter;
-}
-
-static xmlNodePtr
-mg_backend_readmng_get_a_for_chapter (
-        MgBackendReadmng *self,
-        xmlNodePtr li) {
-    for (xmlNodePtr child = li->children; child; child = child->next) {
-        if (!strcmp((char *) child->name, "a")) {
-            return child;
-        }
-    }
-    return NULL;
 }
 
 static xmlDocPtr
