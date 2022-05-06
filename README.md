@@ -2,6 +2,8 @@
 
 OpenMG is a GTK4 + Libadwaita manga reader written in C which uses `readmng` as its backend.
 
+[![Please do not theme this app](https://stopthemingmy.app/badge.svg)](https://stopthemingmy.app)
+
 ## Demostration
 
 ![Demostration vídeo of the manga reader.](https://gitea.sergiotarxz.freemyip.com/sergiotarxz/mangareader/raw/branch/main/demostration.gif)
