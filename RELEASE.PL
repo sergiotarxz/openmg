@@ -56,6 +56,8 @@ sub compile {
     my $flatpak_builder_file = 'me.sergiotarxz.openmg.json';
     my $app_id               = 'me.sergiotarxz.openmg';
     my $app_output_name      = path("openmg-$arch-$tag.flatpak")->absolute;
+    system 'cp', '/usr/bin/qemu-aarch64',
+            "$ENV{HOME}/.local/share/flatpak/runtime/org.gnome.Sdk/aarch64/master/active/files/bin/";
 
     my $push = pushd $clone_path;
     system 'flatpak-builder', '--force-clean', '--arch', $arch, '--install', '--user',
